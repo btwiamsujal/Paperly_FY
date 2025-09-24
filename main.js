@@ -3,8 +3,9 @@ import './style.css';
 
 // Simple auth gate: redirect to login if no token
 const token = localStorage.getItem('token');
+const AUTH_URL = 'http://localhost:5002/frontend/auth/auth.html';
 if (!token) {
-  window.location.href = '/auth.html';
+  window.location.href = AUTH_URL;
 }
 
 // Connect to backend server with JWT in handshake
@@ -35,7 +36,7 @@ socket.on('connect_error', (err) => {
   console.error('Socket connect error:', err?.message || err);
 if (err?.message === 'Unauthorized') {
     localStorage.removeItem('token');
-    window.location.href = '/auth.html';
+    window.location.href = AUTH_URL;
   }
 });
 
@@ -83,5 +84,5 @@ messageInput.addEventListener('keypress', (e) => {
 const logoutBtn = document.getElementById('logoutBtn');
 logoutBtn?.addEventListener('click', () => {
   localStorage.removeItem('token');
-  window.location.href = '/auth.html';
+  window.location.href = AUTH_URL;
 });

@@ -400,8 +400,29 @@ body {
 
 /* Larger viewer modal */
 .modal-content.viewer {
-    max-width: 1200px;
+    max-width: 90vw;
+    width: 95%;
+    max-height: 90vh;
 }
+.viewer-body { overflow: hidden; }
+.image-viewport { overflow: auto; max-height: 85vh; }
+/* prevent outer modal from scrolling; let inner content scroll */
+.modal-content.viewer { overflow: hidden; }
+
+/* Center PDF horizontally; top align vertically; scroll inside only */
+.pdf-viewport {
+  height: 85vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;    /* horizontal center */
+  justify-content: flex-start; /* top align vertically for reading */
+}
+.pdf-viewport canvas { display: block; margin-bottom: 12px; }
+.viewer-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.zoom-btn { background: var(--surface-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+.zoom-btn:hover { background: var(--border-color); }
+.viewer-body img { transform-origin: center center; }
 .viewer-body img {
     width: 100%;
     height: auto;
@@ -409,7 +430,7 @@ body {
 }
 .viewer-body .pdf-frame {
     width: 100%;
-    height: 80vh;
+    height: 85vh;
     border: none;
     border-radius: 8px;
 }

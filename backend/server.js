@@ -88,10 +88,10 @@ app.use('/api/chat', chatRoutes);
 
 // Serve frontend
 const frontendPath = path.join(__dirname, '..');
+// Serve static without implicit index; redirect root to explicit auth page under /frontend/auth/auth.html
 app.use(express.static(frontendPath, { index: false }));
 app.get('/', (req, res) => {
-// Redirect to auth page
-  res.redirect('/auth.html');
+  res.redirect('/frontend/auth/auth.html');
 });
 
 // --- Socket.IO Chat Logic ---

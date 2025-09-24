@@ -94,7 +94,13 @@
     <div class="modal-content viewer">
       <div class="modal-header">
         <h2 class="modal-title" id="viewerTitle">Note</h2>
-        <button class="modal-close" onclick="closeViewer()">&times;</button>
+        <div class="viewer-controls">
+          <button type="button" class="zoom-btn" id="zoomOut" title="Zoom out">−</button>
+          <button type="button" class="zoom-btn" id="zoomIn" title="Zoom in">+</button>
+          <button type="button" class="zoom-btn" id="zoomReset" title="Reset zoom">100%</button>
+          <button type="button" class="zoom-btn" id="zoomFit" title="Fit to width">Fit</button>
+          <button class="modal-close" onclick="closeViewer()">&times;</button>
+        </div>
       </div>
       <div class="viewer-meta" id="viewerMeta"></div>
       <div class="viewer-body" id="viewerBody"></div>

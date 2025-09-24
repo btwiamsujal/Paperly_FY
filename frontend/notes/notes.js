@@ -8,8 +8,11 @@ class NotesManager {
   }
 
   async init() {
+    this.searchQuery = '';
+    this.selectedType = '';
+    this.selectedTag = '';
     await this.fetchNotes();
-    this.renderNotes();
+    this.refreshList();
     this.initEventListeners();
   }
 
@@ -51,15 +54,73 @@ class NotesManager {
       }
       this.openViewer(noteId);
     });
+
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.querySelector('.search-btn');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
+        this.searchQuery = searchInput.value.trim().toLowerCase();
+        this.refreshList();
+      });
+      if (searchBtn) {
+        searchBtn.addEventListener('click', () => {
+          this.searchQuery = searchInput.value.trim().toLowerCase();
+          this.refreshList();
+        });
+      }
+    }
+
+    const typeFilter = document.getElementById('typeFilter');
+    if (typeFilter) {
+      typeFilter.addEventListener('change', () => {
+        this.selectedType = typeFilter.value;
+        this.refreshList();
+      });
+    }
+    const tagFilter = document.getElementById('tagFilter');
+    if (tagFilter) {
+      tagFilter.addEventListener('change', () => {
+        this.selectedTag = tagFilter.value.trim().toLowerCase();
+        this.refreshList();
+      });
+    }
+
+    const viewToggle = document.getElementById('viewToggle');
+    if (viewToggle) {
+      viewToggle.addEventListener('click', () => {
+        const gridEl = document.getElementById('notesGrid');
+        gridEl.classList.toggle('list-view');
+      });
+    }
   }
 
   renderNotes(notesToRender = this.notes) {
     const grid = document.getElementById("notesGrid");
     if (!notesToRender.length) {
-      grid.innerHTML = `<div class="no-notes">No notes yet</div>`;
+      grid.innerHTML = `<div class=\"no-notes\">No matching notes</div>`;
       return;
     }
     grid.innerHTML = notesToRender.map(note => this.createNoteCard(note)).join("");
+  }
+
+  getFilteredNotes() {
+    const q = (this.searchQuery || '').toLowerCase();
+    const type = this.selectedType || '';
+    const tag = (this.selectedTag || '').toLowerCase();
+
+    return this.notes.filter(n => {
+      if (type && n.type !== type) return false;
+      if (tag && !(n.tags || []).some(t => t.toLowerCase() === tag)) return false;
+      if (!q) return true;
+      const hay = [n.title, n.content, ...(n.tags || []), n.uploadedBy?.name]
+        .filter(Boolean)
+        .join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  refreshList() {
+    this.renderNotes(this.getFilteredNotes());
   }
 
   createNoteCard(note) {
@@ -194,7 +255,7 @@ class NotesManager {
         const newNote = await res.json();
         this.notes.unshift(newNote);
       }
-      this.renderNotes();
+      this.refreshList();
       this.closeModal();
     } catch (err) {
       console.error("❌ Save note error:", err);
@@ -236,7 +297,7 @@ class NotesManager {
         throw new Error(data.message || 'Delete failed');
       }
       this.notes = this.notes.filter(n => n._id !== noteId);
-      this.renderNotes();
+      this.refreshList();
     } catch (err) {
       alert(err.message);
     }
@@ -251,16 +312,27 @@ class NotesManager {
     const date = this.formatDate(note.date);
     meta.innerHTML = `<div class=\"note-meta\">by ${this.escapeHtml(uploaderName)} • ${date}</div>`;
 
+    // Reset zoom state
+    this.viewerType = note.type;
+    this.imageZoom = 1;
+    this.pdfZoom = 100;
+
     const body = document.getElementById('viewerBody');
     if (note.type === 'text') {
       body.innerHTML = `<div style=\"white-space: pre-wrap; line-height:1.6;\">${this.escapeHtml(note.content || '')}</div>`;
     } else if (note.type === 'image') {
-      body.innerHTML = `<img src=\"${note.fileUrl || ''}\" alt=\"${this.escapeHtml(note.title)}\" style=\"max-height:70vh;width:auto;display:block;margin:auto;\" onerror=\"this.replaceWith(document.createTextNode('Image unavailable'))\"/>`;
+      body.innerHTML = `<div class=\"image-viewport\" style=\"display:flex;align-items:center;justify-content:center;max-height:85vh;overflow:auto;\"><img id=\"viewerImage\" src=\"${note.fileUrl || ''}\" alt=\"${this.escapeHtml(note.title)}\" style=\"height:auto;max-height:85vh;width:auto;\" onerror=\"this.replaceWith(document.createTextNode('Image unavailable'))\"/></div>`;
+      // Wheel zoom for image
+      const viewport = body.querySelector('.image-viewport');
+      viewport.addEventListener('wheel', (e) => {
+        if (!e.ctrlKey) return; // ctrl+wheel to zoom
+        e.preventDefault();
+        this.adjustZoom('in', 'image', e.deltaY < 0 ? 0.1 : -0.1);
+      }, { passive: false });
+      this.applyImageZoom();
     } else if (note.type === 'pdf') {
       const proxied = `/api/files/pdf?src=${encodeURIComponent(note.fileUrl || '')}`;
-      // Create iframe first (empty), then set src via blob URL fetched with auth header
-      body.innerHTML = `<iframe class=\"pdf-frame\" src=\"\" allowfullscreen></iframe>`;
-      const iframe = body.querySelector('.pdf-frame');
+      body.innerHTML = `<div class=\"pdf-viewport\" id=\"pdfViewport\"></div>`;
       const token = localStorage.getItem('token');
       fetch(proxied, { headers: { Authorization: `Bearer ${token}` }})
         .then(async (res) => {
@@ -268,14 +340,20 @@ class NotesManager {
             const text = await res.text().catch(() => '');
             throw new Error(text || `Failed to load PDF (${res.status})`);
           }
-          return res.blob();
+          return res.arrayBuffer();
         })
-        .then((blob) => {
-          // Revoke previous URL if any
-          if (this.currentPdfUrl) { URL.revokeObjectURL(this.currentPdfUrl); }
-          const url = URL.createObjectURL(blob);
-          this.currentPdfUrl = url;
-          iframe.src = `${url}#toolbar=0&navpanes=0&scrollbar=1`;
+        .then(async (arrayBuffer) => {
+          await this.ensurePdfJs();
+          // Configure worker
+          if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          }
+          const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer });
+          const pdf = await loadingTask.promise;
+          this._pdfDoc = pdf;
+          this._pdfPageNum = 1;
+          this._pdfScale = 1.0;
+          await this.renderPdfDoc();
         })
         .catch((err) => {
           body.innerHTML = `<div style=\"padding:12px;color:#c00;\">Unable to display PDF: ${this.escapeHtml(err.message)}</div>`;
@@ -284,14 +362,152 @@ class NotesManager {
       body.innerHTML = '<div>Unsupported note type</div>';
     }
 
+    // Bind zoom controls
+    const btnIn = document.getElementById('zoomIn');
+    const btnOut = document.getElementById('zoomOut');
+    const btnReset = document.getElementById('zoomReset');
+    const btnFit = document.getElementById('zoomFit');
+    btnIn.onclick = () => this.adjustZoom('in');
+    btnOut.onclick = () => this.adjustZoom('out');
+    btnReset.onclick = () => this.adjustZoom('reset');
+    btnFit.onclick = () => this.adjustZoom('fit');
+
     document.getElementById('viewerModal').classList.add('active');
+
+    // Handle window resize to keep PDF sizing consistent
+    this._onResize = () => {
+      if (this.viewerType === 'pdf') this.applyPdfZoom();
+      if (this.viewerType === 'image') this.applyImageZoom();
+    };
+    window.addEventListener('resize', this._onResize);
+  }
+
+  applyImageZoom() {
+    const img = document.getElementById('viewerImage');
+    if (!img) return;
+    const z = Math.max(0.2, Math.min(5, this.imageZoom || 1));
+    this.imageZoom = z;
+    img.style.transform = `scale(${z})`;
+    this.updateZoomDisplay();
+  }
+
+  async ensurePdfJs() {
+    if (window.pdfjsLib) return;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = resolve; s.onerror = () => reject(new Error('Failed to load pdf.js'));
+      document.head.appendChild(s);
+    });
+  }
+
+  async renderPdfDoc() {
+    const viewportEl = document.getElementById('pdfViewport');
+    if (!viewportEl || !this._pdfDoc) return;
+
+    // Capture center ratio vs total content height for center-centric zoom
+    const cW = viewportEl.clientWidth;
+    const cH = viewportEl.clientHeight;
+    const prevScrollMid = (viewportEl.scrollTop + cH / 2) / Math.max(1, viewportEl.scrollHeight);
+
+    const desiredScale = Math.max(0.2, Math.min(5, this._pdfScale || 1));
+    this._pdfScale = desiredScale;
+
+    // Clear existing pages
+    viewportEl.innerHTML = '';
+
+    const numPages = this._pdfDoc.numPages || 1;
+    let baseWidth = this._pdfBaseWidth || 0;
+
+    for (let i = 1; i <= numPages; i++) {
+      const page = await this._pdfDoc.getPage(i);
+      if (!baseWidth) {
+        const baseViewport = page.getViewport({ scale: 1 });
+        baseWidth = baseViewport.width;
+        this._pdfBaseWidth = baseWidth;
+      }
+      const vp = page.getViewport({ scale: desiredScale });
+      const canvas = document.createElement('canvas');
+      canvas.className = 'pdf-page-canvas';
+      canvas.width = Math.floor(vp.width);
+      canvas.height = Math.floor(vp.height);
+      canvas.style.width = `${Math.floor(vp.width)}px`;
+      canvas.style.height = `${Math.floor(vp.height)}px`;
+      viewportEl.appendChild(canvas);
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    }
+
+    // Restore center after render using ratio
+    const newScrollTarget = Math.max(0, prevScrollMid * viewportEl.scrollHeight - cH / 2);
+    viewportEl.scrollTop = Math.round(newScrollTarget);
+
+    this.updateZoomDisplay();
+  }
+
+  applyPdfZoom(initial = false) {
+    // Re-render all pages at new scale
+    this.renderPdfDoc();
+  }
+
+  adjustZoom(action, typeOverride = null, delta = null) {
+    const type = typeOverride || this.viewerType;
+    if (type === 'image') {
+      if (action === 'in') this.imageZoom = (this.imageZoom || 1) + (delta ?? 0.2);
+      else if (action === 'out') this.imageZoom = (this.imageZoom || 1) - 0.2;
+      else if (action === 'reset') this.imageZoom = 1;
+      else if (action === 'fit') {
+        // Calculate fit-to-width zoom
+        const img = document.getElementById('viewerImage');
+        const viewport = img?.closest('.image-viewport');
+        if (img && viewport) {
+          const viewportWidth = viewport.clientWidth - 40; // some padding
+          const imgNaturalWidth = img.naturalWidth || img.width;
+          this.imageZoom = imgNaturalWidth > 0 ? Math.min(2, viewportWidth / imgNaturalWidth) : 1;
+        } else {
+          this.imageZoom = 1;
+        }
+      }
+      this.applyImageZoom();
+    } else if (type === 'pdf') {
+      if (action === 'in') this._pdfScale = (this._pdfScale || 1) + 0.2;
+      else if (action === 'out') this._pdfScale = (this._pdfScale || 1) - 0.2;
+      else if (action === 'reset') this._pdfScale = 1;
+      else if (action === 'fit') {
+        try {
+          const viewportEl = document.getElementById('pdfViewport');
+          const pageWidth = this._pdfBaseWidth || 800;
+          const containerWidth = viewportEl ? (viewportEl.clientWidth - 24) : 800;
+          this._pdfScale = pageWidth > 0 ? Math.max(0.2, Math.min(5, containerWidth / pageWidth)) : 1;
+        } catch(_) { this._pdfScale = 1; }
+      }
+      this.applyPdfZoom();
+    }
+  }
+
+  updateZoomDisplay() {
+    const resetBtn = document.getElementById('zoomReset');
+    if (!resetBtn) return;
+    const type = this.viewerType;
+    if (type === 'image') {
+      const percent = Math.round((this.imageZoom || 1) * 100);
+      resetBtn.textContent = `${percent}%`;
+    } else if (type === 'pdf') {
+      const percent = Math.round((this._pdfScale || 1) * 100);
+      resetBtn.textContent = `${percent}%`;
+    } else {
+      resetBtn.textContent = '100%';
+    }
   }
 
   closeViewer() {
-    if (this.currentPdfUrl) {
-      try { URL.revokeObjectURL(this.currentPdfUrl); } catch (_) {}
-      this.currentPdfUrl = null;
+    if (this._onResize) {
+      window.removeEventListener('resize', this._onResize);
+      this._onResize = null;
     }
+    this._pdfDoc = null;
+    this._pdfPageNum = 1;
+    this._pdfScale = 1;
     document.getElementById('viewerModal').classList.remove('active');
     document.getElementById('viewerBody').innerHTML = '';
   }
