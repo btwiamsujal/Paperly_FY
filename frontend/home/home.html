@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperly - Home</title>
+    <link rel="stylesheet" href="../common/theme.css">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <link rel="stylesheet" href="home.css">
+</head>
+<body>
+    <div class="main-content">
+        <header class="page-header">
+            <div class="header-content">
+                <h1 class="page-title">Welcome to Paperly</h1>
+                <p class="page-subtitle">Your modern note-sharing platform</p>
+            </div>
+        </header>
+
+        <main class="home-main">
+            <section class="hero-section">
+                <div class="hero-content">
+                    <h2 class="hero-title">Share Knowledge, Build Together</h2>
+                    <p class="hero-description">
+                        Paperly makes it easy to create, share, and collaborate on notes with students and teachers.
+                        Chat with peers and let AI help you summarize complex documents.
+                    </p>
+                    <button class="cta-button" onclick="window.location.href='../dashboard/dashboard.html'">
+                        Get Started
+                    </button>
+                </div>
+                <div class="hero-image">
+                    <div class="floating-card">
+                        <div class="card-header">📝 Study Notes</div>
+                        <div class="card-content">
+                            <div class="card-line"></div>
+                            <div class="card-line short"></div>
+                            <div class="card-line"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="features-section">
+                <h3 class="section-title">Explore Features</h3>
+                <div class="features-grid">
+                    <div class="feature-card" onclick="window.location.href='../notes/notes.html'">
+                        <div class="feature-icon">📝</div>
+                        <h4 class="feature-title">Notes</h4>
+                        <p class="feature-description">Create and organize your notes with rich text, images, and PDFs</p>
+                        <div class="feature-arrow">→</div>
+                    </div>
+
+                    <div class="feature-card" onclick="window.location.href='../chatbox/chatbox.html'">
+                        <div class="feature-icon">💬</div>
+                        <h4 class="feature-title">Chatbox</h4>
+                        <p class="feature-description">Real-time messaging with classmates</p>
+                        <div class="feature-arrow">→</div>
+                    </div>
+
+                    <div class="feature-card" onclick="window.location.href='../ai/ai.html'">
+                        <div class="feature-icon">🤖</div>
+                        <h4 class="feature-title">AI Summarizer</h4>
+                        <p class="feature-description">Get AI-powered summaries of your PDF documents</p>
+                        <div class="feature-arrow">→</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number">1,234</div>
+                        <div class="stat-label">Notes Created</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">567</div>
+                        <div class="stat-label">Students</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">45</div>
+                        <div class="stat-label">Teachers</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../common/sidebar.js"></script>
+    <script src="home.js"></script>
+</body>
+</html>

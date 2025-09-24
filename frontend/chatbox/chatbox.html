@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Paperly - Chatbox</title>
+  <link rel="stylesheet" href="../common/theme.css">
+  <link rel="stylesheet" href="../common/sidebar.css">
+  <link rel="stylesheet" href="chatbox.css">
+</head>
+<body>
+  <div class="main-content">
+    <div class="chat-container">
+
+      <!-- Chat Sidebar -->
+      <div class="chat-sidebar">
+        <div class="chat-header">
+          <h2 class="chat-title">Messages</h2>
+          <button class="new-chat-btn" onclick="openNewChatModal()">
+            <span class="btn-icon">+</span>
+          </button>
+        </div>
+
+        <div class="chat-search">
+          <input type="text" id="chatSearch" placeholder="Search conversations...">
+        </div>
+
+        <div class="chat-tabs">
+          <button class="chat-tab active" data-tab="direct">Direct</button>
+        </div>
+
+        <div class="chat-list" id="chatList">
+          <!-- Chat items will be populated by JavaScript -->
+        </div>
+      </div>
+
+      <!-- Chat Main Area -->
+      <div class="chat-main">
+        <div class="chat-area" id="chatArea">
+          <!-- Messages -->
+          <div id="messages" style="padding: 20px; max-height: 500px; overflow-y: auto;"></div>
+
+          <!-- Message Input -->
+          <div class="message-input">
+            <input type="text" id="messageInput" class="message-field" placeholder="Type a message..." />
+            <button id="sendButton" class="send-btn" onclick="sendMessage()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Chat Modal -->
+  <div class="modal-overlay" id="newChatModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Start New Chat</h2>
+        <button class="modal-close" onclick="closeNewChatModal()">&times;</button>
+      </div>
+      <div class="new-chat-content">
+        <div class="search-users">
+          <input type="text" id="userSearch" placeholder="Search users...">
+        </div>
+        <div class="users-list" id="usersList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../common/sidebar.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="chatbox.js"></script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Paperly - Manage Your Classrooms</title>
+    <link rel="stylesheet" href="../common/theme.css">
+  <link rel="stylesheet" href="../common/sidebar.css" />
+  <link rel="stylesheet" href="classroom.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="main-content">
+    <header class="page-header">
+      <div class="header-content">
+        <h1 class="page-title">Manage Your Classrooms</h1>
+        <p class="page-subtitle">Create new classrooms or join existing ones</p>
+      </div>
+    </header>
+
+    <main class="classroom-main">
+      <div class="classroom-container">
+        <!-- Create Classroom Card -->
+        <div class="classroom-card">
+          <div class="card-header">
+            <div class="card-icon">🏫</div>
+            <h2 class="card-title">Create a Classroom</h2>
+          </div>
+          <form id="createForm" class="classroom-form">
+            <div class="form-group">
+              <label for="className">Classroom Name</label>
+              <input type="text" id="className" placeholder="Enter classroom name" required />
+            </div>
+            <div class="form-group">
+              <label for="classSubject">Subject</label>
+              <input type="text" id="classSubject" placeholder="Enter subject" required />
+            </div>
+            <button class="btn-primary" type="submit">
+              <span class="btn-icon">+</span>
+              Create Classroom
+            </button>
+          </form>
+        </div>
+
+        <!-- Join Classroom Card -->
+        <div class="classroom-card">
+          <div class="card-header">
+            <div class="card-icon">🔗</div>
+            <h2 class="card-title">Join a Classroom</h2>
+          </div>
+          <form id="joinForm" class="classroom-form">
+            <div class="form-group">
+              <label for="joinCode">Classroom Code</label>
+              <input type="text" id="joinCode" placeholder="Enter classroom code" required />
+            </div>
+            <button class="btn-secondary" type="submit">
+              <span class="btn-icon">→</span>
+              Join Classroom
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Recent Classrooms Section -->
+      <div class="recent-section">
+        <h3 class="section-title">Recent Classrooms</h3>
+        <div class="recent-classrooms" id="recentClassrooms">
+          <!-- Recent classrooms will be populated by JavaScript -->
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Classroom View Modal -->
+  <div class="modal-overlay" id="classroomViewModal">
+    <div class="modal-content large">
+      <div class="modal-header">
+        <h2 class="modal-title" id="classroomTitle">Classroom Name</h2>
+        <button class="modal-close" onclick="closeClassroomView()">&times;</button>
+      </div>
+      
+      <div class="classroom-view-content">
+        <div class="classroom-tabs">
+          <button class="classroom-tab active" data-tab="overview">Overview</button>
+          <button class="classroom-tab" data-tab="resources">Resources</button>
+          <button class="classroom-tab" data-tab="members">Members</button>
+        </div>
+        
+        <div class="classroom-tab-content">
+          <!-- Overview Tab -->
+          <div class="tab-panel active" id="overview">
+            <div class="classroom-info">
+              <h3>Classroom Information</h3>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Subject:</span>
+                  <span class="info-value" id="classroomSubject">-</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Classroom Code:</span>
+                  <span class="info-value" id="classroomCode">-</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Members:</span>
+                  <span class="info-value" id="classroomMemberCount">-</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Role:</span>
+                  <span class="info-value" id="classroomRole">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Resources Tab -->
+          <div class="tab-panel" id="resources">
+            <div class="resources-section">
+              <div class="upload-section">
+                <h3>Upload Resources</h3>
+                <form class="upload-form" id="resourceUploadForm">
+                  <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                      <div class="upload-icon">📁</div>
+                      <h4>Drop files here or click to browse</h4>
+                      <p>Supported formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT</p>
+                      <input type="file" id="resourceFile" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt" style="display: none;">
+                    </div>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="resourceTitle">Resource Title</label>
+                    <input type="text" id="resourceTitle" placeholder="Enter resource title" required>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label for="resourceDescription">Description (Optional)</label>
+                    <textarea id="resourceDescription" rows="3" placeholder="Brief description of the resource"></textarea>
+                  </div>
+                  
+                  <button type="submit" class="btn-primary">
+                    <span class="btn-icon">📤</span>
+                    Upload Resource
+                  </button>
+                </form>
+              </div>
+              
+              <div class="resources-list">
+                <h3>Available Resources</h3>
+                <div class="resources-grid" id="resourcesGrid">
+                  <!-- Resources will be populated by JavaScript -->
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Members Tab -->
+          <div class="tab-panel" id="members">
+            <div class="members-section">
+              <h3>Classroom Members</h3>
+              <div class="members-list" id="membersList">
+                <!-- Members will be populated by JavaScript -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../common/sidebar.js"></script>
+  <script src="classroom.js"></script>
+</body>
+</html>

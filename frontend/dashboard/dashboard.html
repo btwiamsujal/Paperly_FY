@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperly - Dashboard</title>
+    <link rel="stylesheet" href="../common/theme.css">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div class="main-content">
+        <header class="page-header">
+            <div class="header-content">
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-subtitle">Welcome back! Here's your activity overview</p>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="dashboard-grid">
+                <!-- Stats Cards -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon">📝</div>
+                        <div class="stat-info">
+                            <div class="stat-number">24</div>
+                            <div class="stat-label">My Notes</div>
+                        </div>
+                    </div>
+                    
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🤖</div>
+                        <div class="stat-info">
+                            <div class="stat-number">12</div>
+                            <div class="stat-label">AI Summaries</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">💬</div>
+                        <div class="stat-info">
+                            <div class="stat-number">156</div>
+                            <div class="stat-label">Messages</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="activity-section">
+                    <div class="section-header">
+                        <h2 class="section-title">Recent Activity</h2>
+                        <button class="view-all-btn">View All</button>
+                    </div>
+                    
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon">📝</div>
+                            <div class="activity-content">
+                                <div class="activity-title">Created "Physics Notes - Chapter 5"</div>
+                                <div class="activity-time">2 hours ago</div>
+                            </div>
+                        </div>
+                        
+                        <div class="activity-item">
+                            <div class="activity-icon">🤖</div>
+                            <div class="activity-content">
+                                <div class="activity-title">AI summarized "Biology Textbook.pdf"</div>
+                                <div class="activity-time">2 days ago</div>
+                            </div>
+                        </div>
+                        
+                        <div class="activity-item">
+                            <div class="activity-icon">💬</div>
+                            <div class="activity-content">
+                                <div class="activity-title">New chat message received</div>
+                                <div class="activity-time">3 days ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <div class="section-header">
+                        <h2 class="section-title">Quick Actions</h2>
+                    </div>
+                    
+                    <div class="actions-grid">
+                        <button class="action-card" onclick="window.location.href='../notes/notes.html'">
+                            <div class="action-icon">📝</div>
+                            <div class="action-title">Create Note</div>
+                        </button>
+                        
+                        <button class="action-card" onclick="window.location.href='../ai/ai.html'">
+                            <div class="action-icon">🤖</div>
+                            <div class="action-title">AI Summarize</div>
+                        </button>
+                        
+                        <button class="action-card" onclick="window.location.href='../chatbox/chatbox.html'">
+                            <div class="action-icon">💬</div>
+                            <div class="action-title">Start Chat</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recent Notes -->
+                <div class="recent-notes">
+                    <div class="section-header">
+                        <h2 class="section-title">Recent Notes</h2>
+                        <button class="view-all-btn" onclick="window.location.href='../notes/notes.html'">View All</button>
+                    </div>
+                    
+                    <div class="notes-list">
+                        <div class="note-item">
+                            <div class="note-icon">📄</div>
+                            <div class="note-content">
+                                <div class="note-title">Physics Notes - Chapter 5</div>
+                                <div class="note-meta">
+                                    <span class="note-date">Today</span>
+                                    <span class="note-tag">Physics</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="note-item">
+                            <div class="note-icon">📄</div>
+                            <div class="note-content">
+                                <div class="note-title">Math Formulas Collection</div>
+                                <div class="note-meta">
+                                    <span class="note-date">Yesterday</span>
+                                    <span class="note-tag">Mathematics</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="note-item">
+                            <div class="note-icon">📄</div>
+                            <div class="note-content">
+                                <div class="note-title">Biology Summary</div>
+                                <div class="note-meta">
+                                    <span class="note-date">2 days ago</span>
+                                    <span class="note-tag">Biology</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Joined Classrooms Section -->
+                <div class="joined-classrooms">
+                    <div class="section-header">
+                       <h2 class="section-title">Joined Classrooms</h2>
+                    </div>
+                     <ul id="joined-classrooms" class="classroom-list">
+                    <!-- JS will populate this -->
+                    </ul>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="../common/sidebar.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

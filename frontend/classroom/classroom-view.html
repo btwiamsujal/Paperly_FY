@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom - Advanced Mathematics</title>
+    <link rel="stylesheet" href="../common/theme.css">
+    <link rel="stylesheet" href="classroom-view.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="classroom-header">
+        <div class="header-content">
+            <div class="class-info">
+                <h1 class="class-title">Advanced Mathematics - Class 12A</h1>
+                <div class="class-time">
+                    <i class="fas fa-clock"></i>
+                    <span id="class-duration">Started 10:00 AM</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-outline">
+                    <i class="fas fa-calendar"></i>
+                    Schedule
+                </button>
+                <button class="btn btn-outline">
+                    <i class="fas fa-cog"></i>
+                    Settings
+                </button>
+                <button class="btn btn-danger" onclick="leaveClass()">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Leave
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="classroom-container">
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <!-- Classroom Header and Tabs - ADDED HERE -->
+<div class="classroom-header">
+  <h1 id="classroomName">Classroom Name</h1>
+  <p id="classroomCode">Code: XYZ123</p>
+</div>
+
+<!-- 🔻 Start of Tabs & Sections -->
+<div class="classroom-tabs">
+  <button onclick="showSection('posts')">Posts</button>
+  <button onclick="showSection('notes')">Notes</button>
+  <button onclick="showSection('resources')">Resources</button>
+</div>
+
+<div id="posts" class="section">
+  <form id="postForm">
+    <input type="text" placeholder="Write a post" id="postText">
+    <button type="submit">Post</button>
+  </form>
+  <div id="postContainer"></div>
+</div>
+
+<div id="notes" class="section" style="display: none;">
+  <p>Notes section coming soon...</p>
+</div>
+
+<div id="resources" class="section" style="display: none;">
+  <!-- 📁 Upload Form -->
+  <form id="resource-form">
+  <input type="hidden" id="classroom-id" value="YOUR_ACTUAL_CLASSROOM_ID" />
+  <input type="text" id="resource-title" placeholder="Enter resource title" required />
+  <input type="file" id="resource-file" name="file" required />
+  <button type="submit">Upload Resource</button>
+</form>
+
+
+  <!-- 📄 Uploaded Resources List -->
+  <div id="resource-list"></div>
+</div>
+
+<!-- 🔺 End of Tabs & Sections -->
+
+            <!-- Document Sharing Section -->
+            <div class="documents-section">
+                <div class="section-header">
+                    <h2><i class="fas fa-file-alt"></i> Shared Documents</h2>
+                    <button class="btn btn-primary" onclick="document.getElementById('fileUpload').click()">
+                        <i class="fas fa-plus"></i>
+                        Upload Document
+                    </button>
+                </div>
+
+                <!-- Upload Area -->
+                <div class="upload-area" onclick="document.getElementById('fileUpload').click()">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Upload Documents</h3>
+                    <p>Drag and drop files here or click to browse</p>
+                    <span class="supported-formats">Supported: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT</span>
+                    <input type="file" id="fileUpload" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt" style="display: none;">
+                </div>
+
+                <!-- Documents List -->
+                <div class="documents-list">
+                    <div class="document-item">
+                        <div class="document-icon">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <div class="document-details">
+                            <h4>Mathematics Chapter 5 - Algebra</h4>
+                            <div class="document-meta">
+                                <span class="file-size">2.4 MB</span>
+                                <span class="upload-time">Uploaded by John Smith • 2 hours ago</span>
+                            </div>
+                        </div>
+                        <div class="document-actions">
+                            <button class="action-btn download" onclick="downloadFile('math-chapter-5.pdf')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="action-btn view" onclick="viewFile('math-chapter-5.pdf')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="document-item">
+                        <div class="document-icon">
+                            <i class="fas fa-file-powerpoint"></i>
+                        </div>
+                        <div class="document-details">
+                            <h4>Quadratic Equations Presentation</h4>
+                            <div class="document-meta">
+                                <span class="file-size">5.1 MB</span>
+                                <span class="upload-time">Uploaded by John Smith • 1 day ago</span>
+                            </div>
+                        </div>
+                        <div class="document-actions">
+                            <button class="action-btn download" onclick="downloadFile('quadratic-equations.pptx')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="action-btn view" onclick="viewFile('quadratic-equations.pptx')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="document-item">
+                        <div class="document-icon">
+                            <i class="fas fa-file-word"></i>
+                        </div>
+                        <div class="document-details">
+                            <h4>Assignment Instructions - Week 5</h4>
+                            <div class="document-meta">
+                                <span class="file-size">1.2 MB</span>
+                                <span class="upload-time">Uploaded by John Smith • 3 days ago</span>
+                            </div>
+                        </div>
+                        <div class="document-actions">
+                            <button class="action-btn download" onclick="downloadFile('assignment-week-5.docx')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="action-btn view" onclick="viewFile('assignment-week-5.docx')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="document-item">
+                        <div class="document-icon">
+                            <i class="fas fa-file-excel"></i>
+                        </div>
+                        <div class="document-details">
+                            <h4>Grade Sheet Template</h4>
+                            <div class="document-meta">
+                                <span class="file-size">856 KB</span>
+                                <span class="upload-time">Uploaded by Emma Wilson • 1 week ago</span>
+                            </div>
+                        </div>
+                        <div class="document-actions">
+                            <button class="action-btn download" onclick="downloadFile('grade-sheet.xlsx')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="action-btn view" onclick="viewFile('grade-sheet.xlsx')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Participants -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3><i class="fas fa-users"></i> Participants</h3>
+                <span class="participant-count" id="participantCount">6 people</span>
+            </div>
+
+            <div class="participants-list">
+                <!-- Teacher -->
+                <div class="participant-item teacher">
+                    <div class="participant-avatar">
+                        <div class="avatar-circle">JS</div>
+                        <div class="status-indicator online"></div>
+                    </div>
+                    <div class="participant-details">
+                        <h4>John Smith</h4>
+                        <span class="role-badge teacher">Teacher</span>
+                        <span class="join-time">Host</span>
+                    </div>
+                </div>
+
+                <!-- Students -->
+                <div class="participant-item">
+                    <div class="participant-avatar">
+                        <div class="avatar-circle">EW</div>
+                        <div class="status-indicator online"></div>
+                    </div>
+                    <div class="participant-details">
+                        <h4>Emma Wilson</h4>
+                        <span class="role-badge">Student</span>
+                        <span class="join-time">Joined 10:05 AM</span>
+                    </div>
+                </div>
+
+                <div class="participant-item">
+                    <div class="participant-avatar">
+                        <div class="avatar-circle">MB</div>
+                        <div class="status-indicator online"></div>
+                    </div>
+                    <div class="participant-details">
+                        <h4>Michael Brown</h4>
+                        <span class="role-badge">Student</span>
+                        <span class="join-time">Joined 10:02 AM</span>
+                    </div>
+                </div>
+
+                <div class="participant-item">
+                    <div class="participant-avatar">
+                        <div class="avatar-circle">SD</div>
+                        <div class="status-indicator online"></div>
+                    </div>
+                    <div class="participant-details">
+                        <h4>Sarah Davis</h4>
+                        <span class="role-badge">Student</span>
+                        <span class="join-time">Joined 10:08 AM</span>
+                    </div>
+                </div>
+
+                <div class="participant-item">
+                    <div class="participant-avatar">
+                        <div class="avatar-circle">AJ</div>
+                        <div class="status-indicator away"></div>
+                    </div>
+                    <div class="participant-details">
+                        <h4>Alex Johnson</h4>
+                        <span class="role-badge">Student</span>
+                        <span class="join-time">Joined 10:15 AM</span>
+                    </div>
+                </div>
+
+                <div class="participant-item">
+                    <div class="participant-avatar">
+                        <div class="avatar-circle">LC</div>
+                        <div class="status-indicator online"></div>
+                    </div>
+                    <div class="participant-details">
+                        <h4>Lisa Chen</h4>
+                        <span class="role-badge">Student</span>
+                        <span class="join-time">Joined 10:12 AM</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Classroom Stats -->
+            <div class="classroom-stats">
+                <div class="stat-item">
+                    <i class="fas fa-file-alt"></i>
+                    <span>4 Documents</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-users"></i>
+                    <span>6 Participants</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-clock"></i>
+                    <span id="sessionDuration">45 minutes</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="classroom-view.js"></script>
+</body>
+</html>

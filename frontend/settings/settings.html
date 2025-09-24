@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperly - Settings</title>
+    <link rel="stylesheet" href="../common/theme.css">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+    <div class="main-content">
+        <header class="page-header">
+            <div class="header-content">
+                <h1 class="page-title">Settings</h1>
+                <p class="page-subtitle">Manage your account and preferences</p>
+            </div>
+        </header>
+
+        <main class="settings-main">
+            <div class="settings-container">
+                <div class="settings-sidebar">
+                    <div class="settings-nav">
+                        <button class="settings-nav-item active" data-section="profile">
+                            <span class="nav-icon">👤</span>
+                            <span class="nav-text">Profile</span>
+                        </button>
+                        <button class="settings-nav-item" data-section="account">
+                            <span class="nav-icon">🔐</span>
+                            <span class="nav-text">Account</span>
+                        </button>
+                        <button class="settings-nav-item" data-section="notifications">
+                            <span class="nav-icon">🔔</span>
+                            <span class="nav-text">Notifications</span>
+                        </button>
+                        <button class="settings-nav-item" data-section="privacy">
+                            <span class="nav-icon">🔒</span>
+                            <span class="nav-text">Privacy</span>
+                        </button>
+                        <button class="settings-nav-item" data-section="appearance">
+                            <span class="nav-icon">🎨</span>
+                            <span class="nav-text">Appearance</span>
+                        </button>
+                        <button class="settings-nav-item" data-section="data">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Data</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="settings-content">
+                    <!-- Profile Section -->
+                    <div class="settings-section active" id="profile">
+                        <div class="section-header">
+                            <h2 class="section-title">Profile Information</h2>
+                            <p class="section-description">Update your personal information and profile details</p>
+                        </div>
+
+                        <div class="profile-card">
+                            <div class="profile-avatar-section">
+                                <div class="profile-avatar">
+                                    <span class="avatar-text">JD</span>
+                                </div>
+                                <div class="avatar-actions">
+                                    <button class="avatar-btn" onclick="changeAvatar()">Change Avatar</button>
+                                    <button class="avatar-btn secondary" onclick="removeAvatar()">Remove</button>
+                                </div>
+                            </div>
+
+                            <form class="profile-form" id="profileForm">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="firstName">First Name</label>
+                                        <input type="text" id="firstName" value="John" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="lastName">Last Name</label>
+                                        <input type="text" id="lastName" value="Doe" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="email">Email Address</label>
+                                    <input type="email" id="email" value="john.doe@example.com" required readonly>
+                                    <small class="form-hint">Email cannot be changed</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="role">Role</label>
+                                    <select id="role" disabled>
+                                        <option value="student" selected>Student</option>
+                                        <option value="teacher">Teacher</option>
+                                    </select>
+                                    <small class="form-hint">Role cannot be changed</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="institution">Institution</label>
+                                    <input type="text" id="institution" value="University of Technology" placeholder="Your school or university">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="bio">Bio</label>
+                                    <textarea id="bio" rows="3" placeholder="Tell us about yourself...">Computer Science student passionate about AI and machine learning.</textarea>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="button" class="btn-secondary" onclick="resetProfile()">Reset</button>
+                                    <button type="submit" class="btn-primary">Save Changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Account Section -->
+                    <div class="settings-section" id="account">
+                        <div class="section-header">
+                            <h2 class="section-title">Account Settings</h2>
+                            <p class="section-description">Manage your account security and preferences</p>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3 class="card-title">Change Password</h3>
+                            <form class="password-form" id="passwordForm">
+                                <div class="form-group">
+                                    <label for="currentPassword">Current Password</label>
+                                    <input type="password" id="currentPassword" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="newPassword">New Password</label>
+                                    <input type="password" id="newPassword" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="confirmPassword">Confirm New Password</label>
+                                    <input type="password" id="confirmPassword" required>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="submit" class="btn-primary">Update Password</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3 class="card-title">Two-Factor Authentication</h3>
+                            <p class="card-description">Add an extra layer of security to your account</p>
+                            
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-name">SMS Authentication</div>
+                                    <div class="setting-desc">Receive codes via SMS</div>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="sms2fa">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-name">Authenticator App</div>
+                                    <div class="setting-desc">Use Google Authenticator or similar</div>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="app2fa">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-card danger">
+                            <h3 class="card-title">Danger Zone</h3>
+                            <p class="card-description">Permanent actions that cannot be undone</p>
+                            
+                            <div class="danger-actions">
+                                <button class="btn-danger" onclick="deleteAccount()">Delete Account</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notifications Section -->
+                    <div class="settings-section" id="notifications">
+                        <div class="section-header">
+                            <h2 class="section-title">Notification Preferences</h2>
+                            <p class="section-description">Choose how you want to be notified about activity</p>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3 class="card-title">Email Notifications</h3>
+                            
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-name">New Messages</div>
+                                    <div class="setting-desc">Get notified when you receive new messages</div>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="emailMessages" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-name">Note Sharing</div>
+                                    <div class="setting-desc">When someone shares a note with you</div>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="emailNotes" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3 class="card-title">Push Notifications</h3>
+                            
+                            
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-name">Browser Notifications</div>
+                                    <div class="setting-desc">Show notifications in your browser</div>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="browserNotifications">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Privacy Section -->
+                    <div class="settings-section" id="privacy">
+                        <div class="section-header">
+                            <h2 class="section-title">Privacy Settings</h2>
+                            <p class="section-description">Control who can see your information and activity</p>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3 class="card-title">Profile Visibility</h3>
+                            
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-name">Public Profile</div>
+                                    <div class="setting-desc">Allow others to find and view your profile</div>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="publicProfile" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-name">Show Online Status</div>
+                                    <div class="setting-desc">Let others see when you're online</div>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="onlineStatus" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3 class="card-title">Data Sharing</h3>
+                            
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-name">Analytics</div>
+                                    <div class="setting-desc">Help improve Paperly by sharing usage data</div>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="analytics" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Appearance Section -->
+                    <div class="settings-section" id="appearance">
+                        <div class="section-header">
+                            <h2 class="section-title">Appearance</h2>
+                            <p class="section-description">Customize how Paperly looks and feels</p>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3 class="card-title">Theme</h3>
+                            
+                            <div class="theme-options">
+                                <div class="theme-option active" data-theme="light">
+                                    <div class="theme-preview light">
+                                        <div class="theme-header"></div>
+                                        <div class="theme-content">
+                                            <div class="theme-sidebar"></div>
+                                            <div class="theme-main"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-name">Light</div>
+                                </div>
+
+                                <div class="theme-option" data-theme="dark">
+                                    <div class="theme-preview dark">
+                                        <div class="theme-header"></div>
+                                        <div class="theme-content">
+                                            <div class="theme-sidebar"></div>
+                                            <div class="theme-main"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-name">Dark</div>
+                                </div>
+
+                                <div class="theme-option" data-theme="auto">
+                                    <div class="theme-preview auto">
+                                        <div class="theme-header"></div>
+                                        <div class="theme-content">
+                                            <div class="theme-sidebar"></div>
+                                            <div class="theme-main"></div>
+                                        </div>
+                                    </div>
+                                    <div class="theme-name">Auto</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3 class="card-title">Display</h3>
+                            
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-name">Compact Mode</div>
+                                    <div class="setting-desc">Show more content in less space</div>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="compactMode">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-name">Animations</div>
+                                    <div class="setting-desc">Enable smooth transitions and animations</div>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="animations" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Section -->
+                    <div class="settings-section" id="data">
+                        <div class="section-header">
+                            <h2 class="section-title">Data Management</h2>
+                            <p class="section-description">Export, import, or clear your data</p>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3 class="card-title">Export Data</h3>
+                            <p class="card-description">Download a copy of your data</p>
+                            
+                            <div class="data-actions">
+                                <button class="btn-secondary" onclick="exportNotes()">Export Notes</button>
+                                <button class="btn-secondary" onclick="exportMessages()">Export Messages</button>
+                                <button class="btn-secondary" onclick="exportAll()">Export All Data</button>
+                            </div>
+                        </div>
+
+                        <div class="settings-card">
+                            <h3 class="card-title">Storage Usage</h3>
+                            
+                            <div class="storage-info">
+                                <div class="storage-item">
+                                    <div class="storage-label">Notes</div>
+                                    <div class="storage-bar">
+                                        <div class="storage-fill" style="width: 45%"></div>
+                                    </div>
+                                    <div class="storage-value">2.3 MB</div>
+                                </div>
+
+                                <div class="storage-item">
+                                    <div class="storage-label">Messages</div>
+                                    <div class="storage-bar">
+                                        <div class="storage-fill" style="width: 20%"></div>
+                                    </div>
+                                    <div class="storage-value">1.1 MB</div>
+                                </div>
+
+                                <div class="storage-item">
+                                    <div class="storage-label">AI Summaries</div>
+                                    <div class="storage-bar">
+                                        <div class="storage-fill" style="width: 15%"></div>
+                                    </div>
+                                    <div class="storage-value">0.8 MB</div>
+                                </div>
+
+                                <div class="storage-total">
+                                    <strong>Total: 4.2 MB of 100 MB used</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-card danger">
+                            <h3 class="card-title">Clear Data</h3>
+                            <p class="card-description">Permanently delete specific types of data</p>
+                            
+                            <div class="danger-actions">
+                                <button class="btn-danger outline" onclick="clearMessages()">Clear Messages</button>
+                                <button class="btn-danger outline" onclick="clearSummaries()">Clear AI Summaries</button>
+                                <button class="btn-danger" onclick="clearAllData()">Clear All Data</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="../common/sidebar.js"></script>
+    <script src="settings.js"></script>
+</body>
+</html>

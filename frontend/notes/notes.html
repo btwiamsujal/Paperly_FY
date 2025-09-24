@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paperly - Notes</title>
+  <link rel="stylesheet" href="../common/theme.css">
+  <link rel="stylesheet" href="../common/sidebar.css">
+  <link rel="stylesheet" href="notes.css">
+</head>
+<body>
+  <div class="main-content">
+    <header class="page-header">
+      <div class="header-content">
+<h1 class="page-title">Notes</h1>
+        <button class="create-note-btn" onclick="openCreateModal()">
+          <span class="btn-icon">+</span> Create Note
+        </button>
+      </div>
+    </header>
+
+    <main class="notes-main">
+      <div class="notes-controls">
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Search notes...">
+          <button class="search-btn">🔍</button>
+        </div>
+
+        <div class="filter-controls">
+          <select id="typeFilter" class="filter-select">
+            <option value="">All Types</option>
+            <option value="text">Text</option>
+            <option value="image">Image</option>
+            <option value="pdf">PDF</option>
+          </select>
+          <select id="tagFilter" class="filter-select">
+            <option value="">All Tags</option>
+            <option value="physics">Physics</option>
+            <option value="math">Mathematics</option>
+            <option value="biology">Biology</option>
+            <option value="chemistry">Chemistry</option>
+          </select>
+          <button class="view-toggle" id="viewToggle"><span class="toggle-icon">⊞</span></button>
+        </div>
+      </div>
+
+      <div class="notes-grid" id="notesGrid"></div>
+    </main>
+  </div>
+
+  <!-- Create/Edit Modal -->
+  <div class="modal-overlay" id="noteModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="noteModalTitle">Create Note</h2>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <form class="note-form" id="noteForm">
+        <div class="form-group">
+          <label for="noteTitle">Title</label>
+          <input type="text" id="noteTitle" required>
+        </div>
+        <div class="form-group">
+          <label for="noteType">Type</label>
+          <select id="noteType" onchange="handleTypeChange()">
+            <option value="text">Text Note</option>
+            <option value="image">Image Note</option>
+            <option value="pdf">PDF Note</option>
+          </select>
+        </div>
+        <div class="form-group" id="textGroup">
+          <label for="noteContent">Content</label>
+          <textarea id="noteContent" rows="6" placeholder="Write your note here..."></textarea>
+        </div>
+        <div class="form-group hidden" id="fileGroup">
+          <label for="noteFile">Upload File</label>
+          <input type="file" id="noteFile" accept=".jpg,.jpeg,.png,.pdf">
+          <div class="file-preview" id="filePreview"></div>
+        </div>
+        <div class="form-group">
+          <label for="noteTags">Tags</label>
+          <input type="text" id="noteTags" placeholder="Enter tags separated by commas">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="cancel-btn" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="save-btn" id="noteSubmitBtn">Save Note</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Viewer Modal -->
+  <div class="modal-overlay" id="viewerModal">
+    <div class="modal-content viewer">
+      <div class="modal-header">
+        <h2 class="modal-title" id="viewerTitle">Note</h2>
+        <button class="modal-close" onclick="closeViewer()">&times;</button>
+      </div>
+      <div class="viewer-meta" id="viewerMeta"></div>
+      <div class="viewer-body" id="viewerBody"></div>
+    </div>
+  </div>
+
+  <script src="../common/sidebar.js"></script>
+  <script src="notes.js"></script>
+</body>
+</html>

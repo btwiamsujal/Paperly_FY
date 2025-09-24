@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperly - AI PDF Summarizer</title>
+    <link rel="stylesheet" href="../common/theme.css">
+    <link rel="stylesheet" href="../common/sidebar.css">
+    <link rel="stylesheet" href="ai.css">
+</head>
+<body>
+    <div class="main-content">
+        <header class="page-header">
+            <div class="header-content">
+                <h1 class="page-title">AI PDF Summarizer</h1>
+                <p class="page-subtitle">Upload PDFs and get instant AI-powered summaries</p>
+            </div>
+        </header>
+
+        <main class="ai-main">
+            <div class="ai-container">
+                <!-- Upload Section -->
+                <div class="upload-section" id="uploadSection">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-content">
+                            <div class="upload-icon">📄</div>
+                            <h3 class="upload-title">Upload PDF Document</h3>
+                            <p class="upload-subtitle">Drop your PDF file here or click to browse</p>
+                            <button class="upload-btn" onclick="triggerFileInput()">
+                                Choose File
+                            </button>
+                            <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+                        </div>
+                    </div>
+                    
+                    <div class="upload-info">
+                        <div class="info-item">
+                            <span class="info-icon">📋</span>
+                            <div class="info-text">
+                                <strong>Supported Format:</strong> PDF files up to 10MB
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-icon">🤖</span>
+                            <div class="info-text">
+                                <strong>AI Processing:</strong> Advanced summarization with key points
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-icon">⚡</span>
+                            <div class="info-text">
+                                <strong>Fast Results:</strong> Get summaries in seconds
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Processing Section -->
+                <div class="processing-section" id="processingSection" style="display: none;">
+                    <div class="processing-content">
+                        <div class="processing-animation">
+                            <div class="processing-spinner"></div>
+                            <div class="processing-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                        <h3 class="processing-title">Processing PDF...</h3>
+                        <p class="processing-subtitle">Our AI is analyzing your document</p>
+                        <div class="processing-steps">
+                            <div class="step active">
+                                <span class="step-number">1</span>
+                                <span class="step-text">Extracting text</span>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <span class="step-text">Analyzing content</span>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <span class="step-text">Generating summary</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div class="results-section" id="resultsSection" style="display: none;">
+                    <div class="results-header">
+                        <h3 class="results-title">Summary Results</h3>
+                        <div class="results-actions">
+                            <button class="action-btn" onclick="downloadSummary()">
+                                <span class="btn-icon">💾</span>
+                                Save Summary
+                            </button>
+                            <button class="action-btn" onclick="shareSummary()">
+                                <span class="btn-icon">📤</span>
+                                Share
+                            </button>
+                            <button class="action-btn secondary" onclick="startNew()">
+                                <span class="btn-icon">🔄</span>
+                                New Document
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="results-content">
+                        <div class="document-info" id="documentInfo">
+                            <!-- Document info will be populated by JavaScript -->
+                        </div>
+                        
+                        <div class="summary-tabs">
+                            <button class="summary-tab active" data-tab="overview">Overview</button>
+                            <button class="summary-tab" data-tab="key-points">Key Points</button>
+                            <button class="summary-tab" data-tab="highlights">Highlights</button>
+                        </div>
+                        
+                        <div class="summary-content">
+                            <div class="summary-panel active" id="overview">
+                                <div class="summary-text" id="overviewText">
+                                    <!-- Summary text will be populated by JavaScript -->
+                                </div>
+                            </div>
+                            
+                            <div class="summary-panel" id="key-points">
+                                <div class="key-points-list" id="keyPointsList">
+                                    <!-- Key points will be populated by JavaScript -->
+                                </div>
+                            </div>
+                            
+                            <div class="summary-panel" id="highlights">
+                                <div class="highlights-list" id="highlightsList">
+                                    <!-- Highlights will be populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Section -->
+                <div class="history-section">
+                    <h3 class="history-title">Recent Summaries</h3>
+                    <div class="history-list" id="historyList">
+                        <!-- History items will be populated by JavaScript -->
+                    </div>
+                </div>
+    </div>
+    </main>
+    </div>
+
+    <script src="../common/sidebar.js"></script>
+    <script src="ai.js"></script>
+</body>
+</html>

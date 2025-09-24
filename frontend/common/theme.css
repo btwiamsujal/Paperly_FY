@@ -1,0 +1,24 @@
+:root {
+  --page-bg: #F7FFF7;
+  --text-color: #090C02;
+  --text-muted: #666;
+  --surface-bg: rgba(255, 255, 255, 0.9);
+  --surface-bg-alt: rgba(9, 12, 2, 0.03);
+  --border-color: rgba(9, 12, 2, 0.1);
+}
+
+body {
+  background: var(--page-bg);
+  color: var(--text-color);
+}
+
+body.theme-dark {
+  --page-bg: #121212;
+  --text-color: #e0e0e0;
+  --text-muted: #bbbbbb;
+  --surface-bg: rgba(42, 42, 42, 0.9);
+  --surface-bg-alt: rgba(255, 255, 255, 0.05);
+  --border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-color);
+  background: var(--page-bg);
+}
