@@ -397,24 +397,240 @@ class ClassroomManager {
         }
     }
 
-    renderMembers() {
+    async renderMembers() {
         const membersList = document.getElementById('membersList');
-        const members = this.currentClassroom && this.currentClassroom.members ? this.currentClassroom.members : [
-            { name: 'John Doe', role: 'Teacher', avatar: 'JD' },
-            { name: 'Alice Johnson', role: 'Student', avatar: 'AJ' },
-            { name: 'Bob Smith', role: 'Student', avatar: 'BS' },
-            { name: 'Carol Davis', role: 'Student', avatar: 'CD' }
-        ];
+        
+        if (!this.currentClassroom || !this.currentClassroom.id) {
+            membersList.innerHTML = '<div class="loading-state">No classroom selected</div>';
+            return;
+        }
 
-        membersList.innerHTML = members.map(member => `
-            <div class="member-item">
-                <div class="member-avatar">${member.avatar}</div>
-                <div class="member-info">
-                    <div class="member-name">${member.name}</div>
-                    <div class="member-role">${member.role}</div>
+        // Show loading state
+        membersList.innerHTML = '<div class="loading-state">Loading members...</div>';
+
+        try {
+            await this.loadClassroomMembers();
+        } catch (error) {
+            console.error('Error loading members:', error);
+            membersList.innerHTML = '<div class="error-state">Failed to load members</div>';
+        }
+    }
+
+    async loadClassroomMembers() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            this.showMessage('Please log in to view members', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://localhost:5002/api/classrooms/${this.currentClassroom.id}/members`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load members');
+            }
+
+            const data = await response.json();
+            this.currentClassroom.members = data.members || [];
+            
+            // Get current user info
+            const currentUser = this.getCurrentUserId();
+            const currentUserMember = this.currentClassroom.members.find(m => m._id === currentUser);
+            const isCurrentUserAdmin = currentUserMember ? currentUserMember.role === 'admin' : false;
+            
+            this.displayMembers(isCurrentUserAdmin);
+            
+        } catch (error) {
+            console.error('Error loading members:', error);
+            this.showMessage('Failed to load classroom members', 'error');
+        }
+    }
+
+    displayMembers(isCurrentUserAdmin) {
+        const membersList = document.getElementById('membersList');
+        const members = this.currentClassroom.members || [];
+        
+        if (members.length === 0) {
+            membersList.innerHTML = '<div class="loading-state">No members found</div>';
+            return;
+        }
+
+        membersList.innerHTML = members.map(member => {
+            const initials = this.getUserInitials(member.name);
+            const roleDisplay = member.role === 'admin' ? 'Admin' : 'User';
+            const joinTime = member.isCreator ? 'Creator' : this.formatJoinTime(member.joinedAt);
+            const adminControls = this.createAdminControls(member, isCurrentUserAdmin);
+            
+            return `
+                <div class="member-item ${member.role === 'admin' ? 'admin' : ''}">
+                    <div class="member-avatar">
+                        <div class="avatar-circle">${initials}</div>
+                    </div>
+                    <div class="member-info">
+                        <div class="member-name">${member.name}</div>
+                        <div class="member-details">
+                            <span class="role-badge ${member.role === 'admin' ? 'admin' : ''}">${roleDisplay}</span>
+                            <span class="join-time">${joinTime}</span>
+                        </div>
+                    </div>
+                    ${adminControls}
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+    }
+
+    // Get current user ID from JWT token
+    getCurrentUserId() {
+        const token = localStorage.getItem('token');
+        if (!token) return null;
+        
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.id;
+        } catch (error) {
+            console.error('Error parsing token:', error);
+            return null;
+        }
+    }
+
+    // Generate user avatar initials
+    getUserInitials(name) {
+        if (!name) return '??';
+        const names = name.split(' ');
+        if (names.length >= 2) {
+            return (names[0][0] + names[1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+    }
+
+    // Format join time
+    formatJoinTime(joinedAt) {
+        if (!joinedAt) return 'Unknown';
+        
+        const joinDate = new Date(joinedAt);
+        const now = new Date();
+        const diffTime = Math.abs(now - joinDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays <= 1) {
+            return joinDate.toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+            });
+        } else {
+            return `${diffDays} days ago`;
+        }
+    }
+
+    // Create admin control buttons
+    createAdminControls(member, isCurrentUserAdmin) {
+        if (!isCurrentUserAdmin || member.isCreator) {
+            return ''; // No controls for non-admins or creator
+        }
+        
+        const currentUser = this.getCurrentUserId();
+        if (member._id === currentUser) {
+            return ''; // Can't manage yourself
+        }
+        
+        let controls = '<div class="member-controls">';
+        
+        if (member.role === 'user') {
+            controls += `<button class="control-btn promote" onclick="classroomManager.promoteUser('${member._id}')" title="Promote to Admin"><i class="fas fa-arrow-up"></i></button>`;
+        } else if (member.role === 'admin') {
+            controls += `<button class="control-btn demote" onclick="classroomManager.demoteUser('${member._id}')" title="Demote to User"><i class="fas fa-arrow-down"></i></button>`;
+        }
+        
+        controls += `<button class="control-btn remove" onclick="classroomManager.removeUser('${member._id}')" title="Remove User"><i class="fas fa-times"></i></button>`;
+        controls += '</div>';
+        
+        return controls;
+    }
+
+    // Promote user to admin
+    async promoteUser(userId) {
+        if (!confirm('Are you sure you want to promote this user to admin?')) return;
+        
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`http://localhost:5002/api/classrooms/${this.currentClassroom.id}/members/${userId}/promote`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.showMessage('User promoted to admin successfully!', 'success');
+                this.loadClassroomMembers(); // Reload members
+            } else {
+                this.showMessage(data.message || 'Failed to promote user', 'error');
+            }
+        } catch (error) {
+            console.error('Error promoting user:', error);
+            this.showMessage('An error occurred while promoting user', 'error');
+        }
+    }
+
+    // Demote user from admin
+    async demoteUser(userId) {
+        if (!confirm('Are you sure you want to demote this user from admin?')) return;
+        
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`http://localhost:5002/api/classrooms/${this.currentClassroom.id}/members/${userId}/demote`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.showMessage('User demoted successfully!', 'success');
+                this.loadClassroomMembers(); // Reload members
+            } else {
+                this.showMessage(data.message || 'Failed to demote user', 'error');
+            }
+        } catch (error) {
+            console.error('Error demoting user:', error);
+            this.showMessage('An error occurred while demoting user', 'error');
+        }
+    }
+
+    // Remove user from classroom
+    async removeUser(userId) {
+        if (!confirm('Are you sure you want to remove this user from the classroom?')) return;
+        
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`http://localhost:5002/api/classrooms/${this.currentClassroom.id}/members/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.showMessage('User removed from classroom successfully!', 'success');
+                this.loadClassroomMembers(); // Reload members
+            } else {
+                this.showMessage(data.message || 'Failed to remove user', 'error');
+            }
+        } catch (error) {
+            console.error('Error removing user:', error);
+            this.showMessage('An error occurred while removing user', 'error');
+        }
     }
 
     loadRecentClassrooms() {

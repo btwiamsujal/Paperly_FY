@@ -201,7 +201,7 @@ function uploadDocument(file) {
   formData.append('type', 'resource');
   formData.append('classroomId', classroomId);
 
-  fetch(`/api/files/upload/${classroomId}`, {
+  fetch(`http://localhost:5002/api/files/upload/${classroomId}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -539,7 +539,7 @@ async function loadClassroomMembers() {
     }
 
     try {
-        const response = await fetch(`/api/classrooms/${currentClassroomId}/members`, {
+        const response = await fetch(`http://localhost:5002/api/classrooms/${currentClassroomId}/members`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -585,7 +585,7 @@ async function promoteUser(userId) {
     
     const token = localStorage.getItem('token');
     try {
-        const response = await fetch(`/api/classrooms/${currentClassroomId}/members/${userId}/promote`, {
+        const response = await fetch(`http://localhost:5002/api/classrooms/${currentClassroomId}/members/${userId}/promote`, {
             method: 'PATCH',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -612,7 +612,7 @@ async function demoteUser(userId) {
     
     const token = localStorage.getItem('token');
     try {
-        const response = await fetch(`/api/classrooms/${currentClassroomId}/members/${userId}/demote`, {
+        const response = await fetch(`http://localhost:5002/api/classrooms/${currentClassroomId}/members/${userId}/demote`, {
             method: 'PATCH',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -639,7 +639,7 @@ async function removeUser(userId) {
     
     const token = localStorage.getItem('token');
     try {
-        const response = await fetch(`/api/classrooms/${currentClassroomId}/members/${userId}`, {
+        const response = await fetch(`http://localhost:5002/api/classrooms/${currentClassroomId}/members/${userId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -733,7 +733,7 @@ function uploadFile(type) {
   formData.append('type', type);
   formData.append('classroomId', classroomId); // classroomId must be defined globally
 
-  fetch(`/api/files/upload/${classroomId}`, {
+  fetch(`http://localhost:5002/api/files/upload/${classroomId}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${localStorage.getItem('token')}`

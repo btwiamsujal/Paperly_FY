@@ -102,28 +102,49 @@ class SettingsManager {
         localStorage.setItem('paperly_settings', JSON.stringify(this.settings));
     }
 
-    loadUserData() {
-        // Load user profile data (in a real app, this would come from an API)
-        const userData = {
-            firstName: 'John',
-            lastName: 'Doe',
-            email: 'john.doe@example.com',
-            role: 'student',
-            institution: 'University of Technology',
-            bio: 'Computer Science student passionate about AI and machine learning.'
-        };
+    async loadUserData() {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                this.showMessage('Please log in to view your profile', 'error');
+                return;
+            }
 
-        // Populate form fields
-        document.getElementById('firstName').value = userData.firstName;
-        document.getElementById('lastName').value = userData.lastName;
-        document.getElementById('email').value = userData.email;
-        document.getElementById('role').value = userData.role;
-        document.getElementById('institution').value = userData.institution;
-        document.getElementById('bio').value = userData.bio;
+            const response = await fetch('http://localhost:5002/api/auth/me', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
 
-        // Update avatar
-        const avatar = document.querySelector('.profile-avatar .avatar-text');
-        avatar.textContent = userData.firstName[0] + userData.lastName[0];
+            const data = await response.json();
+            
+            if (response.ok && data.user) {
+                const user = data.user;
+                
+                // Parse full name into first and last name
+                const nameParts = user.name.split(' ');
+                const firstName = nameParts[0] || '';
+                const lastName = nameParts.slice(1).join(' ') || '';
+
+                // Populate form fields
+                document.getElementById('firstName').value = firstName;
+                document.getElementById('lastName').value = lastName;
+                document.getElementById('email').value = user.email;
+                document.getElementById('role').value = user.role;
+                document.getElementById('institution').value = user.institution || '';
+                document.getElementById('bio').value = user.bio || '';
+
+                // Update avatar
+                const avatar = document.querySelector('.profile-avatar .avatar-text');
+                avatar.textContent = (firstName[0] || '') + (lastName[0] || '');
+            } else {
+                this.showMessage(data.message || 'Failed to load user data', 'error');
+            }
+        } catch (error) {
+            console.error('Error loading user data:', error);
+            this.showMessage('Error loading user data', 'error');
+        }
     }
 
     applySettings() {
@@ -152,22 +173,57 @@ class SettingsManager {
         });
     }
 
-    saveProfile() {
-        const formData = {
-            firstName: document.getElementById('firstName').value,
-            lastName: document.getElementById('lastName').value,
-            institution: document.getElementById('institution').value,
-            bio: document.getElementById('bio').value
-        };
-
-        // Simulate API call
-        setTimeout(() => {
-            // Update avatar
-            const avatar = document.querySelector('.profile-avatar .avatar-text');
-            avatar.textContent = formData.firstName[0] + formData.lastName[0];
+    async saveProfile() {
+        try {
+            const firstName = document.getElementById('firstName').value.trim();
+            const lastName = document.getElementById('lastName').value.trim();
+            const institution = document.getElementById('institution').value.trim();
+            const bio = document.getElementById('bio').value.trim();
             
-            this.showMessage('Profile updated successfully!', 'success');
-        }, 500);
+            // Combine first and last name
+            const fullName = `${firstName} ${lastName}`.trim();
+            
+            if (!fullName) {
+                this.showMessage('Please enter at least a first name', 'error');
+                return;
+            }
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                this.showMessage('Please log in to update your profile', 'error');
+                return;
+            }
+
+            const requestBody = {
+                name: fullName,
+                institution: institution,
+                bio: bio
+            };
+
+            const response = await fetch('http://localhost:5002/api/auth/update-profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Update avatar
+                const avatar = document.querySelector('.profile-avatar .avatar-text');
+                avatar.textContent = (firstName[0] || '') + (lastName[0] || '');
+                
+                this.showMessage('Profile updated successfully!', 'success');
+            } else {
+                this.showMessage(data.message || 'Failed to update profile', 'error');
+            }
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            this.showMessage('Error updating profile', 'error');
+        }
     }
 
     changePassword() {

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Role Management - Paperly</title>
+    <link rel="stylesheet" href="../common/theme.css">
+    <link rel="stylesheet" href="classroom.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { padding: 20px; }
+        .test-container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin-bottom: 30px; padding: 20px; background: var(--surface-bg); border-radius: 10px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .test-result.success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .test-result.error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .test-members { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Role Management Test Page</h1>
+        
+        <div class="test-section">
+            <h2>Backend Status</h2>
+            <div id="backendStatus">Checking backend connection...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>Authentication Test</h2>
+            <div id="authTest">
+                <button onclick="testLogin()">Test Login</button>
+                <div id="authResult"></div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Sample Members (with Role Management)</h2>
+            <p>This demonstrates how the role management controls would appear to an admin user:</p>
+            <div class="members-list test-members" id="testMembers">
+                <!-- Test members will be populated here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>API Endpoints Test</h2>
+            <button onclick="testClassroomEndpoints()">Test Classroom API</button>
+            <div id="apiResults"></div>
+        </div>
+    </div>
+
+    <script>
+        // Test data
+        const testMembers = [
+            { _id: '1', name: 'John Smith', role: 'admin', joinedAt: new Date().toISOString(), isCreator: true },
+            { _id: '2', name: 'Alice Johnson', role: 'admin', joinedAt: new Date(Date.now() - 86400000).toISOString(), isCreator: false },
+            { _id: '3', name: 'Bob Wilson', role: 'user', joinedAt: new Date(Date.now() - 172800000).toISOString(), isCreator: false },
+            { _id: '4', name: 'Carol Davis', role: 'user', joinedAt: new Date(Date.now() - 259200000).toISOString(), isCreator: false }
+        ];
+
+        // Test functions
+        async function checkBackend() {
+            try {
+                const response = await fetch('http://localhost:5002/api/classrooms/my', {
+                    headers: {
+                        'Authorization': 'Bearer test-token'
+                    }
+                });
+                
+                if (response.status === 401) {
+                    document.getElementById('backendStatus').innerHTML = 
+                        '<div class="test-result success">✅ Backend is running (returned 401 as expected without valid token)</div>';
+                } else {
+                    document.getElementById('backendStatus').innerHTML = 
+                        '<div class="test-result success">✅ Backend is running</div>';
+                }
+            } catch (error) {
+                document.getElementById('backendStatus').innerHTML = 
+                    '<div class="test-result error">❌ Backend is not running: ' + error.message + '</div>';
+            }
+        }
+
+        async function testLogin() {
+            const authResult = document.getElementById('authResult');
+            authResult.innerHTML = 'Testing login...';
+
+            try {
+                const response = await fetch('http://localhost:5002/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'testpassword'
+                    })
+                });
+
+                if (response.status === 400) {
+                    authResult.innerHTML = '<div class="test-result success">✅ Auth endpoint is working (returned 400 for invalid credentials)</div>';
+                } else {
+                    authResult.innerHTML = '<div class="test-result success">✅ Auth endpoint responded with status: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                authResult.innerHTML = '<div class="test-result error">❌ Auth test failed: ' + error.message + '</div>';
+            }
+        }
+
+        async function testClassroomEndpoints() {
+            const resultsDiv = document.getElementById('apiResults');
+            resultsDiv.innerHTML = 'Testing classroom endpoints...';
+
+            const endpoints = [
+                { url: '/api/classrooms/my', method: 'GET', name: 'Get My Classrooms' },
+                { url: '/api/classrooms/test-id/members', method: 'GET', name: 'Get Classroom Members' },
+                { url: '/api/classrooms/test-id/members/test-user/promote', method: 'PATCH', name: 'Promote User' },
+                { url: '/api/classrooms/test-id/members/test-user/demote', method: 'PATCH', name: 'Demote User' },
+                { url: '/api/classrooms/test-id/members/test-user', method: 'DELETE', name: 'Remove User' }
+            ];
+
+            let results = '<h3>Endpoint Test Results:</h3>';
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch('http://localhost:5002' + endpoint.url, {
+                        method: endpoint.method,
+                        headers: {
+                            'Authorization': 'Bearer test-token'
+                        }
+                    });
+                    
+                    const statusClass = response.status === 401 || response.status === 403 ? 'success' : 'success';
+                    results += `<div class="test-result ${statusClass}">
+                        ✅ ${endpoint.name}: ${response.status} - ${endpoint.method} ${endpoint.url}
+                    </div>`;
+                } catch (error) {
+                    results += `<div class="test-result error">
+                        ❌ ${endpoint.name}: ${error.message}
+                    </div>`;
+                }
+            }
+            
+            resultsDiv.innerHTML = results;
+        }
+
+        function renderTestMembers() {
+            const membersList = document.getElementById('testMembers');
+            const currentUserId = '2'; // Simulate user Alice as current user (admin)
+            
+            membersList.innerHTML = testMembers.map(member => {
+                const initials = getUserInitials(member.name);
+                const roleDisplay = member.role === 'admin' ? 'Admin' : 'User';
+                const joinTime = member.isCreator ? 'Creator' : formatJoinTime(member.joinedAt);
+                const adminControls = createAdminControls(member, true, currentUserId);
+                
+                return `
+                    <div class="member-item ${member.role === 'admin' ? 'admin' : ''}">
+                        <div class="member-avatar">
+                            <div class="avatar-circle">${initials}</div>
+                        </div>
+                        <div class="member-info">
+                            <div class="member-name">${member.name}</div>
+                            <div class="member-details">
+                                <span class="role-badge ${member.role === 'admin' ? 'admin' : ''}">${roleDisplay}</span>
+                                <span class="join-time">${joinTime}</span>
+                            </div>
+                        </div>
+                        ${adminControls}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getUserInitials(name) {
+            const names = name.split(' ');
+            if (names.length >= 2) {
+                return (names[0][0] + names[1][0]).toUpperCase();
+            }
+            return name.substring(0, 2).toUpperCase();
+        }
+
+        function formatJoinTime(joinedAt) {
+            const joinDate = new Date(joinedAt);
+            const now = new Date();
+            const diffTime = Math.abs(now - joinDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays <= 1) {
+                return joinDate.toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit',
+                    hour12: true 
+                });
+            } else {
+                return `${diffDays} days ago`;
+            }
+        }
+
+        function createAdminControls(member, isCurrentUserAdmin, currentUserId) {
+            if (!isCurrentUserAdmin || member.isCreator || member._id === currentUserId) {
+                return '';
+            }
+            
+            let controls = '<div class="member-controls">';
+            
+            if (member.role === 'user') {
+                controls += `<button class="control-btn promote" onclick="testPromote('${member._id}')" title="Promote to Admin"><i class="fas fa-arrow-up"></i></button>`;
+            } else if (member.role === 'admin') {
+                controls += `<button class="control-btn demote" onclick="testDemote('${member._id}')" title="Demote to User"><i class="fas fa-arrow-down"></i></button>`;
+            }
+            
+            controls += `<button class="control-btn remove" onclick="testRemove('${member._id}')" title="Remove User"><i class="fas fa-times"></i></button>`;
+            controls += '</div>';
+            
+            return controls;
+        }
+
+        // Test action functions
+        function testPromote(userId) {
+            const member = testMembers.find(m => m._id === userId);
+            if (confirm(`Promote ${member.name} to admin?`)) {
+                alert('This would call the promote API endpoint');
+            }
+        }
+
+        function testDemote(userId) {
+            const member = testMembers.find(m => m._id === userId);
+            if (confirm(`Demote ${member.name} from admin?`)) {
+                alert('This would call the demote API endpoint');
+            }
+        }
+
+        function testRemove(userId) {
+            const member = testMembers.find(m => m._id === userId);
+            if (confirm(`Remove ${member.name} from classroom?`)) {
+                alert('This would call the remove user API endpoint');
+            }
+        }
+
+        // Initialize tests
+        document.addEventListener('DOMContentLoaded', () => {
+            checkBackend();
+            renderTestMembers();
+        });
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, changePassword, deleteAccount, me, logout } = require('../controllers/authController');
+const { register, login, changePassword, deleteAccount, me, logout, updateProfile } = require('../controllers/authController');
 const auth = require('../middleware/auth');
 
 // Route for signup
@@ -14,6 +14,9 @@ router.post('/logout', logout);
 
 // Current user info
 router.get('/me', auth, me);
+
+// Route for updating profile
+router.put('/update-profile', auth, updateProfile);
 
 // Route for changing password
 router.put('/change-password', auth, changePassword);

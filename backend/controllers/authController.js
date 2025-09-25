@@ -141,4 +141,34 @@ const me = async (req, res) => {
   }
 };
 
-module.exports = { register, login, changePassword, deleteAccount, me, logout };
+// Update Profile Controller
+const updateProfile = async (req, res) => {
+  const userId = req.user.id || req.user._id;
+  const { name, institution, bio } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update fields if provided
+    if (name !== undefined) user.name = name;
+    if (institution !== undefined) user.institution = institution;
+    if (bio !== undefined) user.bio = bio;
+
+    await user.save();
+
+    // Return updated user without password
+    const updatedUser = await User.findById(userId).select('-password');
+    res.status(200).json({ 
+      message: 'Profile updated successfully', 
+      user: updatedUser 
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error updating profile' });
+  }
+};
+
+module.exports = { register, login, changePassword, deleteAccount, me, logout, updateProfile };

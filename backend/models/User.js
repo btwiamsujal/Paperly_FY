@@ -24,6 +24,14 @@ const userSchema = new mongoose.Schema({
   avatar: {
     type: String // Cloudinary URL - no default
   },
+  institution: {
+    type: String,
+    default: ''
+  },
+  bio: {
+    type: String,
+    default: ''
+  },
   classrooms: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Classroom',
