@@ -2,6 +2,17 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+function setAuthCookie(res, token) {
+  const isProd = process.env.NODE_ENV === 'production';
+  res.cookie('token', token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProd,
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    path: '/',
+  });
+}
+
 // Register Controller
 const register = async (req, res) => {
   const { name, email, password } = req.body;
@@ -18,14 +29,19 @@ const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new user without role
+    // Create new user (role defaults to 'user')
     user = new User({ name, email: normalizedEmail, password: hashedPassword });
     await user.save();
 
-    // Generate token
+    // Generate token with minimal payload
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    res.status(201).json({ token, user });
+    // Set HttpOnly cookie for server-side route protection
+    setAuthCookie(res, token);
+
+    // Return token and user (omit password)
+    const safeUser = { _id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar };
+    res.status(201).json({ token, user: safeUser });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error during registration' });
@@ -50,7 +66,11 @@ const login = async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    res.status(200).json({ token, user });
+    // Set HttpOnly cookie for server-side route protection
+    setAuthCookie(res, token);
+
+    const safeUser = { _id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar };
+    res.status(200).json({ token, user: safeUser });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error during login' });
@@ -97,4 +117,28 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-module.exports = { register, login, changePassword, deleteAccount };
+// Logout: clear auth cookie
+const logout = async (_req, res) => {
+  try {
+    const isProd = process.env.NODE_ENV === 'production';
+    res.clearCookie('token', { httpOnly: true, sameSite: 'lax', secure: isProd, path: '/' });
+    res.status(200).json({ message: 'Logged out' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error during logout' });
+  }
+};
+
+// Current user info
+const me = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error fetching user' });
+  }
+};
+
+module.exports = { register, login, changePassword, deleteAccount, me, logout };

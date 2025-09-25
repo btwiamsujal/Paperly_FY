@@ -12,6 +12,7 @@ const fs = require('fs');
 const http = require('http');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 
 // Load .env variables
 console.log("🔑 MONGO_URI:", process.env.MONGO_URI ? "✅ Loaded" : "❌ Missing");
@@ -63,7 +64,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
-
+app.use(cookieParser());
 app.use(express.json());
 
 // Ensure uploads directory exists
@@ -86,12 +87,37 @@ app.use('/api/posts', postRoutes);
 app.use('/api/classrooms', classroomRoutes);
 app.use('/api/chat', chatRoutes);
 
+// Protect frontend HTML pages by requiring a valid auth cookie on all HTML except the auth page
+const LOGIN_PAGE = '/frontend/auth/auth.html';
+function protectHtmlMiddleware(req, res, next) {
+  // Only guard direct requests for HTML documents
+  if (req.method === 'GET' && req.path.endsWith('.html')) {
+    const isPublic = req.path === LOGIN_PAGE || req.path === '/login.html';
+    if (isPublic) return next();
+    const token = req.cookies?.token;
+    if (!token) {
+      return res.redirect(LOGIN_PAGE);
+    }
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // Optionally attach user for templates (not used here)
+      req.user = { id: decoded.id };
+      return next();
+    } catch (e) {
+      return res.redirect(LOGIN_PAGE);
+    }
+  }
+  next();
+}
+
 // Serve frontend
 const frontendPath = path.join(__dirname, '..');
+// Apply protection BEFORE static serving so HTML is gated by auth cookie
+app.use(protectHtmlMiddleware);
 // Serve static without implicit index; redirect root to explicit auth page under /frontend/auth/auth.html
 app.use(express.static(frontendPath, { index: false }));
 app.get('/', (req, res) => {
-  res.redirect('/frontend/auth/auth.html');
+  res.redirect(LOGIN_PAGE);
 });
 
 // --- Socket.IO Chat Logic ---

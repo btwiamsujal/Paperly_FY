@@ -82,7 +82,8 @@ messageInput.addEventListener('keypress', (e) => {
 
 // Logout
 const logoutBtn = document.getElementById('logoutBtn');
-logoutBtn?.addEventListener('click', () => {
+logoutBtn?.addEventListener('click', async () => {
+  try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(_) {}
   localStorage.removeItem('token');
   window.location.href = AUTH_URL;
 });

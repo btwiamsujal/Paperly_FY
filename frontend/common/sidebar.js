@@ -155,12 +155,17 @@ class Sidebar {
 // Global logout function
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
-        // Clear any stored user data
-        localStorage.removeItem('user');
-        sessionStorage.clear();
-        
-        // Redirect to auth page
-        window.location.href = '../auth/auth.html';
+        // Clear server cookie session
+        fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+          .catch(() => {})
+          .finally(() => {
+              // Clear any stored user data
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              sessionStorage.clear();
+              // Redirect to auth page
+              window.location.href = '../auth/auth.html';
+          });
     }
 }
 
