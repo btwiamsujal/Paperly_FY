@@ -26,17 +26,30 @@ router.post("/upload", auth, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-    const b64 = Buffer.from(req.file.buffer).toString("base64");
-    const dataUri = `data:${req.file.mimetype};base64,${b64}`;
-
-    // Choose resource_type based on mime to ensure proper rendering
+    // Choose resource_type and apply server-side transformations for images
     const isImage = (req.file.mimetype || '').startsWith('image/');
-    const resourceType = isImage ? 'image' : 'raw';
 
-    const uploadRes = await cloudinary.uploader.upload(dataUri, {
-      resource_type: resourceType,
-      folder: "paperly_uploads",
-      public_id: req.file.originalname.replace(/\.[^/.]+$/, ""),
+    const options = isImage ? {
+      resource_type: 'image',
+      folder: 'paperly_uploads',
+      use_filename: true,
+      unique_filename: true,
+      transformation: [{ width: 1600, height: 1600, crop: 'limit' }],
+      quality: 'auto:good',
+      fetch_format: 'auto'
+    } : {
+      resource_type: 'raw',
+      folder: 'paperly_uploads',
+      use_filename: true,
+      unique_filename: true
+    };
+
+    const uploadRes = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(options, (err, result) => {
+        if (err) return reject(err);
+        resolve(result);
+      });
+      stream.end(req.file.buffer);
     });
 
     const newFile = new File({

@@ -1,12 +1,8 @@
 // Global state variables
-let participants = [
-    { id: 1, name: "John Smith", avatar: "JS", role: "teacher", status: "online", joinTime: "Host" },
-    { id: 2, name: "Emma Wilson", avatar: "EW", role: "student", status: "online", joinTime: "10:05 AM" },
-    { id: 3, name: "Michael Brown", avatar: "MB", role: "student", status: "online", joinTime: "10:02 AM" },
-    { id: 4, name: "Sarah Davis", avatar: "SD", role: "student", status: "online", joinTime: "10:08 AM" },
-    { id: 5, name: "Alex Johnson", avatar: "AJ", role: "student", status: "away", joinTime: "10:15 AM" },
-    { id: 6, name: "Lisa Chen", avatar: "LC", role: "student", status: "online", joinTime: "10:12 AM" }
-];
+let participants = [];
+let currentClassroomId = null;
+let currentUserRole = null;
+let currentUserId = null;
 
 let documents = [
     {
@@ -57,6 +53,9 @@ document.addEventListener("DOMContentLoaded", function () {
       uploadFile("resource");
     });
   }
+
+  // Initialize classroom data
+  initializeClassroomData();
 });
 
 const classroomIdInput = document.getElementById('classroom-id');
@@ -341,36 +340,59 @@ function simulateParticipantActivity() {
 
 // Update participants list in UI
 function updateParticipantsList() {
-    const participantsList = document.querySelector('.participants-list');
+    const participantsList = document.getElementById('participantsList');
     if (!participantsList) return;
     
-    participantsList.innerHTML = '';
+    if (participants.length === 0) {
+        participantsList.innerHTML = '<div class="loading-participants"><i class="fas fa-spinner fa-spin"></i><span>Loading participants...</span></div>';
+        return;
+    }
     
-    participants.forEach(participant => {
-        const participantItem = createParticipantElement(participant);
-        participantsList.appendChild(participantItem);
-    });
+    const isCurrentUserAdmin = currentUserRole === 'admin';
+    
+    participantsList.innerHTML = participants.map(participant => {
+        const initials = getUserInitials(participant.name);
+        const roleDisplay = participant.role === 'admin' ? 'Admin' : 'User';
+        const joinTime = participant.isCreator ? 'Creator' : formatJoinTime(participant.joinedAt);
+        const adminControls = createAdminControls(participant, isCurrentUserAdmin);
+        
+        return `
+            <div class="participant-item ${participant.role === 'admin' ? 'admin' : ''}">
+                <div class="participant-avatar">
+                    <div class="avatar-circle">${initials}</div>
+                    <div class="status-indicator online"></div>
+                </div>
+                <div class="participant-details">
+                    <h4>${participant.name}</h4>
+                    <span class="role-badge ${participant.role === 'admin' ? 'admin' : ''}">${roleDisplay}</span>
+                    <span class="join-time">${joinTime}</span>
+                </div>
+                ${adminControls}
+            </div>
+        `;
+    }).join('');
 }
 
-// Create participant element
-function createParticipantElement(participant) {
-    const participantItem = document.createElement('div');
-    participantItem.className = `participant-item ${participant.role === 'teacher' ? 'teacher' : ''}`;
+// Format join time
+function formatJoinTime(joinedAt) {
+    if (!joinedAt) return 'Unknown';
     
-    participantItem.innerHTML = `
-        <div class="participant-avatar">
-            <div class="avatar-circle">${participant.avatar}</div>
-            <div class="status-indicator ${participant.status}"></div>
-        </div>
-        <div class="participant-details">
-            <h4>${participant.name}</h4>
-            <span class="role-badge ${participant.role === 'teacher' ? 'teacher' : ''}">${participant.role === 'teacher' ? 'Teacher' : 'Student'}</span>
-            <span class="join-time">${participant.joinTime}</span>
-        </div>
-    `;
+    const joinDate = new Date(joinedAt);
+    const now = new Date();
+    const diffTime = Math.abs(now - joinDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    return participantItem;
+    if (diffDays <= 1) {
+        return joinDate.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+        });
+    } else {
+        return `${diffDays} days ago`;
+    }
 }
+
 
 // Utility functions
 function formatFileSize(bytes) {
@@ -484,8 +506,194 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('Classroom JavaScript loaded successfully');
-console.log('Features: Document sharing, Participant viewing');
+console.log('Features: Document sharing, Participant viewing, Role Management');
 console.log('Keyboard shortcuts: Ctrl+U (upload), Esc (leave)');
+
+// ===== ROLE MANAGEMENT FUNCTIONS =====
+
+// Initialize classroom data
+function initializeClassroomData() {
+    // Get classroom ID from URL or hidden input
+    const classroomIdInput = document.getElementById('classroom-id');
+    currentClassroomId = classroomIdInput ? classroomIdInput.value : getClassroomIdFromUrl();
+    
+    if (currentClassroomId) {
+        loadClassroomMembers();
+    } else {
+        console.error('Classroom ID not found');
+    }
+}
+
+// Get classroom ID from URL
+function getClassroomIdFromUrl() {
+    const pathParts = window.location.pathname.split('/');
+    return pathParts[pathParts.length - 1].replace('.html', '');
+}
+
+// Load classroom members with roles
+async function loadClassroomMembers() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showNotification('Please log in to view members', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/classrooms/${currentClassroomId}/members`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load members');
+        }
+
+        const data = await response.json();
+        participants = data.members || [];
+        
+        // Set current user role
+        const currentUser = participants.find(p => p._id === getCurrentUserId());
+        currentUserRole = currentUser ? currentUser.role : 'user';
+        
+        updateParticipantsList();
+        updateParticipantCount();
+        
+    } catch (error) {
+        console.error('Error loading members:', error);
+        showNotification('Failed to load classroom members', 'error');
+    }
+}
+
+// Get current user ID from JWT token
+function getCurrentUserId() {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.id;
+    } catch (error) {
+        console.error('Error parsing token:', error);
+        return null;
+    }
+}
+
+// Promote user to admin
+async function promoteUser(userId) {
+    if (!confirm('Are you sure you want to promote this user to admin?')) return;
+    
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`/api/classrooms/${currentClassroomId}/members/${userId}/promote`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            showNotification('User promoted to admin successfully!', 'success');
+            loadClassroomMembers(); // Reload members
+        } else {
+            showNotification(data.message || 'Failed to promote user', 'error');
+        }
+    } catch (error) {
+        console.error('Error promoting user:', error);
+        showNotification('An error occurred while promoting user', 'error');
+    }
+}
+
+// Demote user from admin
+async function demoteUser(userId) {
+    if (!confirm('Are you sure you want to demote this user from admin?')) return;
+    
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`/api/classrooms/${currentClassroomId}/members/${userId}/demote`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            showNotification('User demoted successfully!', 'success');
+            loadClassroomMembers(); // Reload members
+        } else {
+            showNotification(data.message || 'Failed to demote user', 'error');
+        }
+    } catch (error) {
+        console.error('Error demoting user:', error);
+        showNotification('An error occurred while demoting user', 'error');
+    }
+}
+
+// Remove user from classroom
+async function removeUser(userId) {
+    if (!confirm('Are you sure you want to remove this user from the classroom?')) return;
+    
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`/api/classrooms/${currentClassroomId}/members/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+            showNotification('User removed from classroom successfully!', 'success');
+            loadClassroomMembers(); // Reload members
+        } else {
+            showNotification(data.message || 'Failed to remove user', 'error');
+        }
+    } catch (error) {
+        console.error('Error removing user:', error);
+        showNotification('An error occurred while removing user', 'error');
+    }
+}
+
+// Generate user avatar initials
+function getUserInitials(name) {
+    if (!name) return '??';
+    const names = name.split(' ');
+    if (names.length >= 2) {
+        return (names[0][0] + names[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+}
+
+// Create admin control buttons
+function createAdminControls(participant, isCurrentUserAdmin) {
+    if (!isCurrentUserAdmin || participant.isCreator) {
+        return ''; // No controls for non-admins or creator
+    }
+    
+    const currentUser = getCurrentUserId();
+    if (participant._id === currentUser) {
+        return ''; // Can't manage yourself
+    }
+    
+    let controls = '<div class="participant-controls">';
+    
+    if (participant.role === 'user') {
+        controls += `<button class="control-btn promote" onclick="promoteUser('${participant._id}')" title="Promote to Admin"><i class="fas fa-arrow-up"></i></button>`;
+    } else if (participant.role === 'admin') {
+        controls += `<button class="control-btn demote" onclick="demoteUser('${participant._id}')" title="Demote to User"><i class="fas fa-arrow-down"></i></button>`;
+    }
+    
+    controls += `<button class="control-btn remove" onclick="removeUser('${participant._id}')" title="Remove User"><i class="fas fa-times"></i></button>`;
+    controls += '</div>';
+    
+    return controls;
+}
 
 // Tab Switching Logic for Posts / Notes / Resources
 document.addEventListener("DOMContentLoaded", () => {

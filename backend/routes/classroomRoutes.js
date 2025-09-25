@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { checkClassroomAdmin, checkClassroomMember } = require('../middleware/classroomAuth');
 const classroomController = require('../controllers/classroomController');
 const postController = require('../controllers/postController');
 
@@ -17,6 +18,18 @@ router.get('/my', auth, classroomController.getMyClassrooms);
 router.post('/:id/add', auth, postController.addContent);
 
 // ✅ Delete a classroom (and its content)
-router.delete('/:id', auth, classroomController.deleteClassroom);  // <-- New route added
+router.delete('/:id', auth, classroomController.deleteClassroom);
+
+// ✅ Get classroom members with roles
+router.get('/:classroomId/members', auth, checkClassroomMember, classroomController.getClassroomMembers);
+
+// ✅ Promote user to admin (admin only)
+router.patch('/:classroomId/members/:userId/promote', auth, checkClassroomAdmin, classroomController.promoteUser);
+
+// ✅ Demote user from admin to user (admin only)
+router.patch('/:classroomId/members/:userId/demote', auth, checkClassroomAdmin, classroomController.demoteUser);
+
+// ✅ Remove user from classroom (admin only)
+router.delete('/:classroomId/members/:userId', auth, checkClassroomAdmin, classroomController.removeUser);
 
 module.exports = router;

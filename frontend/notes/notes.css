@@ -363,6 +363,69 @@ body {
     margin-top: 8px;
 }
 
+/* Upload progress */
+.upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.upload-progress.hidden { display: none; }
+.progress-track {
+  flex: 1;
+  height: 8px;
+  background: var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  transition: width 0.15s ease;
+}
+.progress-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Viewer layout to ensure content fits inside modal */
+.modal-content.viewer {
+  display: flex;
+  flex-direction: column;
+  height: 85vh;
+  max-height: 85vh;
+  overflow: hidden;
+}
+.viewer-meta {
+  padding: 8px 0;
+}
+.viewer-body {
+  flex: 1;
+  min-height: 0; /* allow children to size within */
+  overflow: hidden;
+}
+.image-viewport {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto; /* scroll when zoomed in */
+  padding: 0 8px;
+}
+.image-viewport img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.pdf-viewport {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
 /* Modal Styles */
 .modal-overlay {
     position: fixed;

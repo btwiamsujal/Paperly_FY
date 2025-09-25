@@ -92,6 +92,32 @@ class NotesManager {
         gridEl.classList.toggle('list-view');
       });
     }
+
+    // File input preview
+    const fileInput = document.getElementById('noteFile');
+    const filePreview = document.getElementById('filePreview');
+    if (fileInput && filePreview) {
+      fileInput.addEventListener('change', () => {
+        filePreview.innerHTML = '';
+        const f = fileInput.files && fileInput.files[0];
+        if (!f) return;
+        if (f.type.startsWith('image/')) {
+          const url = URL.createObjectURL(f);
+          const img = document.createElement('img');
+          img.src = url;
+          img.alt = f.name;
+          img.style.maxWidth = '100%';
+          img.style.maxHeight = '200px';
+          img.style.objectFit = 'contain';
+          img.onload = () => URL.revokeObjectURL(url);
+          filePreview.appendChild(img);
+        } else if (f.type === 'application/pdf') {
+          filePreview.innerHTML = '<div class="note-pdf"><span class="pdf-icon">📄</span> PDF selected</div>';
+        } else {
+          filePreview.textContent = f.name;
+        }
+      });
+    }
   }
 
   renderNotes(notesToRender = this.notes) {
@@ -205,21 +231,32 @@ class NotesManager {
     }
     if (fileInput.files.length) {
       try {
-        const formData = new FormData();
-        formData.append("file", fileInput.files[0]);
         const token = localStorage.getItem("token");
+        const typeSelect = document.getElementById('noteType');
+        const noteType = typeSelect ? typeSelect.value : 'text';
 
-        const res = await fetch("/api/files/upload", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Upload failed");
+        const file = fileInput.files[0];
+        let toUpload = file;
+
+        // Client-side compress images to speed up upload
+        if (noteType === 'image' && file.type.startsWith('image/')) {
+          try { toUpload = await this.compressImage(file, 1600, 0.82); } catch(_) {}
+        }
+
+        const formData = new FormData();
+        // Keep a consistent filename extension when compressing
+        const uploadName = (noteType === 'image' && toUpload.type === 'image/jpeg' && !/\.jpe?g$/i.test(file.name))
+          ? file.name.replace(/\.[^.]+$/, '.jpg') : file.name;
+        formData.append('file', toUpload, uploadName);
+
+        const data = await this.uploadWithProgress('/api/files/upload', formData, token);
         fileUrl = data.fileUrl;
       } catch (err) {
         console.error("❌ Upload error:", err);
         alert("Upload failed");
+        // hide progress
+        const wrap = document.getElementById('uploadProgressWrap');
+        if (wrap) wrap.classList.add('hidden');
         return;
       }
     }
@@ -263,6 +300,101 @@ class NotesManager {
     } finally {
       stopLoading();
     }
+  }
+
+  // Upload with progress using XHR to support progress events
+  uploadWithProgress(url, formData, token) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const wrap = document.getElementById('uploadProgressWrap');
+      const bar = document.getElementById('uploadProgressBar');
+      const text = document.getElementById('uploadProgressText');
+      if (wrap) wrap.classList.remove('hidden');
+      if (bar) bar.style.width = '0%';
+      if (text) text.textContent = '0%';
+
+      xhr.open('POST', url, true);
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable) return;
+        const pct = Math.round((e.loaded / e.total) * 100);
+        if (bar) bar.style.width = pct + '%';
+        if (text) text.textContent = pct + '%';
+      };
+
+      xhr.onerror = () => {
+        if (wrap) wrap.classList.add('hidden');
+        reject(new Error('Network error during upload'));
+      };
+
+      xhr.onload = () => {
+        if (wrap) wrap.classList.add('hidden');
+        try {
+          const data = JSON.parse(xhr.responseText || '{}');
+          if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+          else reject(new Error(data.message || 'Upload failed'));
+        } catch (e) {
+          reject(new Error('Invalid server response'));
+        }
+      };
+
+      xhr.send(formData);
+    });
+  }
+
+  // Client-side image compression to speed up uploads
+  compressImage(file, maxDimension = 1600, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) return resolve(file);
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        try {
+          // Compute new size preserving aspect ratio
+          let { width, height } = img;
+          if (width <= maxDimension && height <= maxDimension) {
+            URL.revokeObjectURL(url);
+            return resolve(file);
+          }
+          if (width > height) {
+            const ratio = maxDimension / width;
+            width = maxDimension;
+            height = Math.round(height * ratio);
+          } else {
+            const ratio = maxDimension / height;
+            height = maxDimension;
+            width = Math.round(width * ratio);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          // Use JPEG for better compression unless original is PNG with transparency
+          let mime = 'image/jpeg';
+          if (file.type === 'image/png') {
+            // Try to detect transparency by sampling
+            try {
+              const sample = ctx.getImageData(0,0,Math.min(10,width),Math.min(10,height)).data;
+              let hasAlpha = false;
+              for (let i=3;i<sample.length;i+=4){ if (sample[i] < 255) { hasAlpha = true; break; } }
+              mime = hasAlpha ? 'image/png' : 'image/jpeg';
+            } catch (_) { mime = 'image/png'; }
+          }
+          canvas.toBlob((blob) => {
+            URL.revokeObjectURL(url);
+            if (blob) resolve(new File([blob], file.name, { type: mime }));
+            else reject(new Error('Compression failed'));
+          }, mime, quality);
+        } catch (e) {
+          URL.revokeObjectURL(url);
+          resolve(file);
+        }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
   }
 
   openEdit(noteId) {
@@ -321,7 +453,7 @@ class NotesManager {
     if (note.type === 'text') {
       body.innerHTML = `<div style=\"white-space: pre-wrap; line-height:1.6;\">${this.escapeHtml(note.content || '')}</div>`;
     } else if (note.type === 'image') {
-      body.innerHTML = `<div class=\"image-viewport\" style=\"display:flex;align-items:center;justify-content:center;max-height:85vh;overflow:auto;\"><img id=\"viewerImage\" src=\"${note.fileUrl || ''}\" alt=\"${this.escapeHtml(note.title)}\" style=\"height:auto;max-height:85vh;width:auto;\" onerror=\"this.replaceWith(document.createTextNode('Image unavailable'))\"/></div>`;
+      body.innerHTML = `<div class=\"image-viewport\"><img id=\"viewerImage\" src=\"${note.fileUrl || ''}\" alt=\"${this.escapeHtml(note.title)}\" onerror=\"this.replaceWith(document.createTextNode('Image unavailable'))\"/></div>`;
       // Wheel zoom for image
       const viewport = body.querySelector('.image-viewport');
       viewport.addEventListener('wheel', (e) => {
@@ -387,6 +519,7 @@ class NotesManager {
     if (!img) return;
     const z = Math.max(0.2, Math.min(5, this.imageZoom || 1));
     this.imageZoom = z;
+    img.style.transformOrigin = 'center center';
     img.style.transform = `scale(${z})`;
     this.updateZoomDisplay();
   }
@@ -457,16 +590,8 @@ class NotesManager {
       else if (action === 'out') this.imageZoom = (this.imageZoom || 1) - 0.2;
       else if (action === 'reset') this.imageZoom = 1;
       else if (action === 'fit') {
-        // Calculate fit-to-width zoom
-        const img = document.getElementById('viewerImage');
-        const viewport = img?.closest('.image-viewport');
-        if (img && viewport) {
-          const viewportWidth = viewport.clientWidth - 40; // some padding
-          const imgNaturalWidth = img.naturalWidth || img.width;
-          this.imageZoom = imgNaturalWidth > 0 ? Math.min(2, viewportWidth / imgNaturalWidth) : 1;
-        } else {
-          this.imageZoom = 1;
-        }
+        // With CSS object-fit: contain, natural fit is scale = 1
+        this.imageZoom = 1;
       }
       this.applyImageZoom();
     } else if (type === 'pdf') {

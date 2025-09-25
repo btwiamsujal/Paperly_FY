@@ -76,6 +76,12 @@
           <label for="noteFile">Upload File</label>
           <input type="file" id="noteFile" accept=".jpg,.jpeg,.png,.pdf">
           <div class="file-preview" id="filePreview"></div>
+          <div class="upload-progress hidden" id="uploadProgressWrap">
+            <div class="progress-track">
+              <div class="progress-bar" id="uploadProgressBar" style="width:0%"></div>
+            </div>
+            <span class="progress-text" id="uploadProgressText">0%</span>
+          </div>
         </div>
         <div class="form-group">
           <label for="noteTags">Tags</label>

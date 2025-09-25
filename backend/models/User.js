@@ -17,8 +17,7 @@ const userSchema = new mongoose.Schema({
     required: true 
   },
   avatar: {
-    type: String, // Cloudinary URL
-    default: "https://res.cloudinary.com/demo/image/upload/v1690000000/default-avatar.png"
+    type: String // Cloudinary URL - no default
   },
   classrooms: [{
     type: mongoose.Schema.Types.ObjectId,

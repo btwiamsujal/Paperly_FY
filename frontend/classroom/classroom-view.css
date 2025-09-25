@@ -585,3 +585,102 @@ body {
         transform: rotate(360deg);
     }
 }
+
+/* Role Management Styles */
+.participant-item.admin {
+    border-left: 3px solid #28a745;
+    background: rgba(40, 167, 69, 0.05);
+}
+
+.participant-controls {
+    display: none;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.participant-item:hover .participant-controls {
+    display: flex;
+}
+
+.control-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.control-btn.promote {
+    background-color: #28a745;
+    color: white;
+}
+
+.control-btn.promote:hover {
+    background-color: #1e7e34;
+}
+
+.control-btn.demote {
+    background-color: #ffc107;
+    color: #1c1c1c;
+}
+
+.control-btn.demote:hover {
+    background-color: #e0a800;
+}
+
+.control-btn.remove {
+    background-color: #dc3545;
+    color: white;
+}
+
+.control-btn.remove:hover {
+    background-color: #c82333;
+}
+
+.role-badge.admin {
+    background-color: #28a745;
+    color: white;
+    font-weight: 500;
+}
+
+.loading-participants {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px;
+    color: #666;
+    font-size: 14px;
+}
+
+.loading-participants i {
+    font-size: 16px;
+}
+
+/* Override existing participant styles for better role display */
+.participant-item.admin .avatar-circle {
+    background: #28a745;
+}
+
+.participant-item {
+    position: relative;
+    justify-content: space-between;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .participant-controls {
+        display: flex;
+    }
+    
+    .control-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 10px;
+    }
+}
