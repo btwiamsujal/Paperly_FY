@@ -10,7 +10,7 @@ const io = new Server(server, {
     origin: "*",
   },
 });
-
+ 
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
