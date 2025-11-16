@@ -6,16 +6,9 @@ const cloudinary = require("../config/cloudinary");
 const File = require("../models/File");
 const Note = require("../models/Note"); // ✅ Notes model
 const auth = require("../middleware/auth");
-const OpenAI = require("openai");
 const fetch = require("node-fetch");
+const { askAI, askAIJson } = require("../utils/aiClient");
 
-// ✅ Groq Client
-const client = new OpenAI({
-  apiKey: process.env.GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
-});
-
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 const MAX_FAST_CHARS = parseInt(process.env.SUMMARY_MAX_CHARS || "16000", 10);
 
 const storage = multer.memoryStorage();
@@ -169,57 +162,32 @@ router.get("/pdf", auth, async (req, res) => {
 
 /* ========= PDF + AI HELPERS ========= */
 async function extractPdfText(fileUrl) {
-  const response = await fetch(fileUrl);
-  const buffer = Buffer.from(await response.arrayBuffer());
-  const data = await pdfParse(buffer);
-  return data.text;
-}
-
-async function askAI(prompt) {
   try {
-    const completion = await client.chat.completions.create({
-      model: GROQ_MODEL,
-      temperature: 0.2,
-      messages: [
-        { role: "system", content: "You are a precise assistant. Keep outputs concise, structured, and faithful to the input." },
-        { role: "user", content: prompt },
-      ],
-    });
-    return completion.choices?.[0]?.message?.content?.trim() || "";
-  } catch (err) {
-    console.error("❌ askAI error:", err?.response?.data || err.message || err);
-    return "";
-  }
-}
-
-// Prefer single-call fast path that returns strict JSON
-async function askAIJson(prompt) {
-  try {
-    const completion = await client.chat.completions.create({
-      model: GROQ_MODEL,
-      temperature: 0.2,
-      messages: [
-        { role: "system", content: "You are a precise assistant. Always return a strict JSON object with only the requested keys. No prose." },
-        { role: "user", content: prompt },
-      ],
-      // Some Groq models honor JSON-style outputs without explicit response_format; keep prompt-enforced parsing.
-    });
-    const content = completion.choices?.[0]?.message?.content?.trim() || "";
-    try {
-      return JSON.parse(content);
-    } catch (_) {
-      // Try to salvage JSON inside fenced code blocks
-      const m = content.match(/\{[\s\S]*\}/);
-      if (m) {
-        try { return JSON.parse(m[0]); } catch (_) {}
-      }
-      throw new Error("Non-JSON response");
+    console.log(`Fetching PDF from: ${fileUrl}`);
+    const response = await fetch(fileUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}`);
     }
+    
+    const buffer = Buffer.from(await response.arrayBuffer());
+    console.log(`PDF buffer size: ${buffer.length} bytes`);
+    
+    // pdf-parse may emit "TT: undefined function" warnings for certain PDF encodings
+    // These are usually harmless but indicate non-standard PDF features
+    const data = await pdfParse(buffer, {
+      // Increase max page parsing to avoid truncation
+      max: 0,
+    });
+    
+    console.log(`✓ PDF parsed: ${data.numpages} pages, ${data.text.length} chars`);
+    return data.text;
   } catch (err) {
-    console.error("❌ askAIJson error:", err?.response?.data || err.message || err);
-    return null;
+    console.error(`✗ PDF extraction failed for ${fileUrl}:`, err.message);
+    throw err;
   }
 }
+
 
 /* ========= Helpers: chunk + merge ========= */
 function chunkTextByParagraphs(text, maxChars = 6000) {
@@ -258,6 +226,7 @@ function parseList(raw) {
 async function summarizeLarge(text) {
   // Fast path: if text is within limit, single call returning all fields
   if (text.length <= MAX_FAST_CHARS) {
+    // Try JSON-structured response first (Gemini primary, Groq fallback)
     const json = await askAIJson(
       `Summarize the following PDF content. Return ONLY a strict JSON object with keys: \n` +
       `- overview: string (200-350 words, clear headings, short paragraphs)\n` +
@@ -272,11 +241,31 @@ async function summarizeLarge(text) {
         highlights: Array.isArray(json.highlights) ? json.highlights : [],
       };
     }
-    // Fallback to simple overview if JSON parsing fails
-    const overviewOnly = await askAI(
-      `Provide a concise overview (200-350 words) with clear headings and short paragraphs for this PDF text.\n\n${text}`
-    );
-    return { overview: overviewOnly, key_points: [], highlights: [] };
+
+    // Robust fallback: compute overview, key points, and highlights separately
+    const [overviewOnly, keyPointsRaw, highlightsRaw] = await Promise.all([
+      askAI(
+        `Provide a concise overview (200-350 words) with clear headings and short paragraphs for this PDF text.\n\n${text}`
+      ),
+      askAI(
+        `List the 3-5 most important bullet-point key points from this PDF. Use one short sentence per point.\n\n${text}`
+      ),
+      askAI(
+        `Extract the top 2-3 short highlight phrases (<= 15 words each) that are most actionable or high-impact from this PDF.\n\n${text}`
+      ),
+    ]);
+
+    const key_points = parseList(keyPointsRaw)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+
+    const highlights = parseList(highlightsRaw)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+
+    return { overview: overviewOnly || "", key_points, highlights };
   }
 
   // Otherwise: chunk + parallelize to speed up

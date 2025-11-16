@@ -90,13 +90,20 @@ export const analyzePdf = async (req, res) => {
     // ✅ Always fetch from Cloudinary if URL present
     let pdfBuffer;
     if (fileDoc.path.startsWith("http")) {
+      console.log(`Fetching PDF from: ${fileDoc.path}`);
       const response = await fetch(fileDoc.path);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch PDF: ${response.status}`);
+      }
       pdfBuffer = Buffer.from(await response.arrayBuffer());
     } else {
       pdfBuffer = fs.readFileSync(fileDoc.path);
     }
 
-    const data = await pdfParse(pdfBuffer);
+    console.log(`PDF buffer size: ${pdfBuffer.length} bytes`);
+    // Note: pdf-parse may show "TT: undefined function" warnings for certain PDF encodings.
+    // These are typically harmless warnings from the underlying PDF.js library.
+    const data = await pdfParse(pdfBuffer, { max: 0 });
 
     const MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
     const MAX_CHARS = parseInt(process.env.SUMMARY_MAX_CHARS || "16000", 10);

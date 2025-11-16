@@ -37,15 +37,39 @@
       <!-- Chat Main Area -->
       <div class="chat-main">
         <div class="chat-area" id="chatArea">
-          <!-- Messages -->
-          <div id="messages" style="padding: 20px; max-height: 500px; overflow-y: auto;"></div>
-
-          <!-- Message Input -->
-          <div class="message-input">
-            <input type="text" id="messageInput" class="message-field" placeholder="Type a message..." />
-            <button id="sendButton" class="send-btn" onclick="sendMessage()">Send</button>
+          <div id="chatHeader" class="chat-header-active"></div>
+          <div id="chatMessages" class="chat-messages"></div>
+          <div class="chat-input-area">
+            <div class="chat-input-container">
+              <button id="attachBtn" class="attachment-btn" title="Attach">📎</button>
+              <input type="file" id="fileInput" class="file-input" />
+              <input type="text" id="messageInput" placeholder="Type a message..." />
+              <button id="sendButton" class="send-btn" title="Send">
+                <span class="send-icon">➤</span>
+              </button>
+            </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Viewer Modal -->
+  <div class="viewer-overlay" id="chatViewerModal">
+    <div class="viewer-container">
+      <div class="viewer-header">
+        <div class="viewer-title" id="chatViewerTitle">File</div>
+        <div class="viewer-actions">
+          <button class="viewer-btn" id="chatZoomOut" title="Zoom out">−</button>
+          <span class="viewer-zoom" id="chatZoomDisplay">100%</span>
+          <button class="viewer-btn" id="chatZoomIn" title="Zoom in">+</button>
+          <button class="viewer-close" id="chatViewerClose" title="Close">×</button>
+        </div>
+      </div>
+      <div class="viewer-body">
+        <div class="viewer-canvas" id="chatViewerBody"></div>
+        <div class="viewer-loading" id="chatViewerLoading" style="display:none;">Loading…</div>
+        <div class="viewer-error" id="chatViewerError" style="display:none;">Unable to load file</div>
       </div>
     </div>
   </div>

@@ -6,6 +6,8 @@ const fileRoutes = require('./routes/fileRoutes');
 const classroomRoutes = require('./routes/classroomRoutes');
 const postRoutes = require('./routes/postRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const userRoutes = require('./routes/userRoutes');
 const path = require('path');
 const cors = require('cors');
 const fs = require('fs');
@@ -13,6 +15,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
+const { initializeChatSocket } = require('./socket/chatSocket');
 
 // Load .env variables
 console.log("🔑 MONGO_URI:", process.env.MONGO_URI ? "✅ Loaded" : "❌ Missing");
@@ -44,7 +47,11 @@ const io = new Server(server, {
   }
 });
 
-// Require JWT on socket connections
+// Initialize enhanced chat socket functionality
+initializeChatSocket(io);
+
+// Legacy socket authentication - now handled in chatSocket.js
+// Keep for backward compatibility with existing chat
 io.use((socket, next) => {
   try {
     const token = socket.handshake.auth?.token || (socket.handshake.headers?.authorization || '').replace('Bearer ', '');
@@ -80,12 +87,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Make io and onlineUsers accessible to controllers
+app.set('io', io);
+app.set('onlineUsers', io.onlineUsers);
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/classrooms', classroomRoutes);
-app.use('/api/chat', chatRoutes);
+app.use('/api/chat', chatRoutes); // Keep old chat for backward compatibility
+app.use('/api/messages', messageRoutes); // New enhanced messaging system
+app.use('/api/users', userRoutes); // User management and search
 
 // Protect frontend HTML pages by requiring a valid auth cookie on all HTML except the auth page
 const LOGIN_PAGE = '/frontend/auth/auth.html';
@@ -120,59 +133,59 @@ app.get('/', (req, res) => {
   res.redirect(LOGIN_PAGE);
 });
 
-// --- Socket.IO Chat Logic ---
-let onlineUsers = new Map();
-
-io.on('connection', (socket) => {
-  console.log('🟢 A user connected:', socket.id);
-
-  // Register user when they connect (optional payload enrich)
-  socket.on('registerUser', (user) => {
-    const merged = { id: socket.user?.id, name: user?.name || 'User' };
-    socket.user = merged;
-    onlineUsers.set(merged.id, merged);
-    io.emit('userOnline', merged);
-    console.log(`✅ User registered: ${merged.name} (${merged.id})`);
-  });
-
-  // Join specific rooms if needed
-  socket.on('joinRoom', (roomId) => {
-    socket.join(roomId);
-    console.log(`User ${socket.id} joined room ${roomId}`);
-  });
-
-  // Handle chat messages (must be authenticated)
-  socket.on('chatMessage', ({ roomId, message }) => {
-    if (!socket.user?.id) return; // ignore if not authed
-    const chat = {
-      sender: socket.user,
-      message,
-      time: new Date().toISOString()
-    };
-    io.to(roomId || 'global').emit('chatMessage', chat);
-  });
-
-  // Typing indicators
-  socket.on('typing', () => {
-    if (!socket.user?.id) return;
-    socket.broadcast.emit('typing', socket.user);
-  });
-  socket.on('stopTyping', () => {
-    if (!socket.user?.id) return;
-    socket.broadcast.emit('stopTyping', socket.user);
-  });
-
-  // Disconnect
-  socket.on('disconnect', () => {
-    if (socket.user?.id) {
-      onlineUsers.delete(socket.user.id);
-      io.emit('userOffline', socket.user);
-      console.log(`🔴 User disconnected: ${socket.user.name || socket.user.id}`);
-    } else {
-      console.log(`🔴 Socket disconnected: ${socket.id}`);
-    }
-  });
-});
+// --- Legacy Socket.IO Chat Logic (commented out, replaced by enhanced version) ---
+// let onlineUsers = new Map();
+//
+// io.on('connection', (socket) => {
+//   console.log('🟢 A user connected:', socket.id);
+//
+//   // Register user when they connect (optional payload enrich)
+//   socket.on('registerUser', (user) => {
+//     const merged = { id: socket.user?.id, name: user?.name || 'User' };
+//     socket.user = merged;
+//     onlineUsers.set(merged.id, merged);
+//     io.emit('userOnline', merged);
+//     console.log(`✅ User registered: ${merged.name} (${merged.id})`);
+//   });
+//
+//   // Join specific rooms if needed
+//   socket.on('joinRoom', (roomId) => {
+//     socket.join(roomId);
+//     console.log(`User ${socket.id} joined room ${roomId}`);
+//   });
+//
+//   // Handle chat messages (must be authenticated)
+//   socket.on('chatMessage', ({ roomId, message }) => {
+//     if (!socket.user?.id) return; // ignore if not authed
+//     const chat = {
+//       sender: socket.user,
+//       message,
+//       time: new Date().toISOString()
+//     };
+//     io.to(roomId || 'global').emit('chatMessage', chat);
+//   });
+//
+//   // Typing indicators
+//   socket.on('typing', () => {
+//     if (!socket.user?.id) return;
+//     socket.broadcast.emit('typing', socket.user);
+//   });
+//   socket.on('stopTyping', () => {
+//     if (!socket.user?.id) return;
+//     socket.broadcast.emit('stopTyping', socket.user);
+//   });
+//
+//   // Disconnect
+//   socket.on('disconnect', () => {
+//     if (socket.user?.id) {
+//       onlineUsers.delete(socket.user.id);
+//       io.emit('userOffline', socket.user);
+//       console.log(`🔴 User disconnected: ${socket.user.name || socket.user.id}`);
+//     } else {
+//       console.log(`🔴 Socket disconnected: ${socket.id}`);
+//     }
+//   });
+// });
 
 // 404 handler
 app.use((req, res) => {

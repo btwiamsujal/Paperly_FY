@@ -1,4 +1,3 @@
-import { io } from 'socket.io-client';
 import './style.css';
 
 // Simple auth gate: redirect to login if no token
@@ -8,82 +7,91 @@ if (!token) {
   window.location.href = AUTH_URL;
 }
 
-// Connect to backend server with JWT in handshake
-const socket = io('http://localhost:5002', {
-  auth: { token }
-}); // Make sure backend is running on port 5002
-const roomId = 'global';
-
+// Create landing page with chat access
 document.querySelector('#app').innerHTML = `
-  <div class="chat-container">
-    <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 8px;">
-      <h2 style="margin:0;">📢 Paperly Chat Room</h2>
-      <button id="logoutBtn" title="Logout">Logout</button>
+  <div style="
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  ">
+    <div style="
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    ">
+      <h1 style="
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 32px;
+        font-weight: 300;
+      ">📝 Paparly</h1>
+      <p style="
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 16px;
+      ">Modern Note-Sharing & Chat Platform</p>
+      
+      <button id="chatBtn" style="
+        background: linear-gradient(45deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 25px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s;
+        margin: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      ">💬 Open Chat</button>
+      
+      <br><br>
+      
+      <button id="logoutBtn" style="
+        background: #f5f5f5;
+        color: #666;
+        border: 1px solid #ddd;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      ">Logout</button>
     </div>
-    <div class="messages" style="height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;"></div>
-    <input id="messageInput" placeholder="Type a message..." style="width: 70%;" />
-    <button id="sendBtn">Send</button>
   </div>
 `;
 
-// Join the chat room when connected
-socket.on('connect', () => {
-  console.log('✅ Connected to server');
-  socket.emit('joinRoom', roomId);
+// Add event listeners
+document.getElementById('chatBtn').addEventListener('click', () => {
+  window.location.href = '/chat.html';
 });
 
-socket.on('connect_error', (err) => {
-  console.error('Socket connect error:', err?.message || err);
-if (err?.message === 'Unauthorized') {
-    localStorage.removeItem('token');
-    window.location.href = AUTH_URL;
-  }
-});
-
-// Log disconnect
-socket.on('disconnect', () => {
-  console.log('❌ Disconnected from server');
-});
-
-// Show incoming messages
-socket.on('chatMessage', (data) => {
-  const messagesDiv = document.querySelector('.messages');
-
-  const messageDiv = document.createElement('div');
-  messageDiv.classList.add('message');
-
-  const senderName = data?.sender?.name || (data?.sender?.id === socket.id ? 'You' : 'User');
-  messageDiv.innerHTML = `<strong>${senderName}:</strong> ${data.message}`;
-
-  messagesDiv.appendChild(messageDiv);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-});
-
-// Send message logic
-const sendBtn = document.getElementById('sendBtn');
-const messageInput = document.getElementById('messageInput');
-
-sendBtn.addEventListener('click', () => {
-  const message = messageInput.value.trim();
-  if (message) {
-    socket.emit('chatMessage', {
-      roomId,
-      message
-    });
-    messageInput.value = '';
-  }
-});
-
-messageInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    sendBtn.click();
-  }
-});
-
-// Logout
-const logoutBtn = document.getElementById('logoutBtn');
-logoutBtn?.addEventListener('click', async () => {
-  try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(_) {}
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  try { 
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); 
+  } catch(_) {}
   localStorage.removeItem('token');
   window.location.href = AUTH_URL;
 });
+
+// Add hover effects
+const style = document.createElement('style');
+style.textContent = `
+  #chatBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  }
+  
+  #logoutBtn:hover {
+    background: #e0e0e0;
+  }
+`;
+document.head.appendChild(style);

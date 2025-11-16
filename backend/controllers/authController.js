@@ -54,8 +54,19 @@ const login = async (req, res) => {
 
   try {
     const normalizedEmail = (email || '').trim().toLowerCase();
-    const emailRegex = new RegExp(`^${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    // Tolerate accidental leading/trailing spaces in stored email
+    const emailPattern = `^\\s*${normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`;
+    const emailRegex = new RegExp(emailPattern, 'i');
+
+    if (process.env.DEBUG_AUTH === 'true') {
+      console.log(`[AUTH] Login attempt for email="${normalizedEmail}" using regex ${emailRegex}`);
+    }
+
     const user = await User.findOne({ email: emailRegex });
+    if (process.env.DEBUG_AUTH === 'true') {
+      console.log(`[AUTH] User lookup result: ${user ? 'FOUND' : 'NOT FOUND'}`);
+    }
+
     if (!user) {
       return res.status(400).json({ message: 'User does not exist' });
     }
