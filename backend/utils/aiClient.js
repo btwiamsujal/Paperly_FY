@@ -16,12 +16,10 @@ const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
 // List of Gemini models to try in order (from most preferred to fallback)
-// Use the v1beta API which has broader model support
+// Using v1 API with correct model names for free tier
 const GEMINI_MODELS = [
-  process.env.GEMINI_MODEL || "gemini-1.5-flash-8b",
-  "gemini-1.5-flash",
-  "gemini-1.5-pro",
-  "gemini-pro"
+  process.env.GEMINI_MODEL || "gemini-1.5-flash",  // Fast and free - best for daily use
+  "gemini-1.0-pro",  // Fallback free model
 ];
 
 let currentGeminiModelIndex = 0;
@@ -38,8 +36,8 @@ let groqCircuitState = {
 async function callGeminiWithModel(prompt, modelName) {
   if (!GEMINI_API_KEY) return { success: false, error: "No API key" };
 
-  // Use v1beta API which has better model support
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+  // Use v1 API for stable free tier models
+  const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
 
   try {
     const res = await fetch(url, {
@@ -225,27 +223,57 @@ function parseJsonSafely(content) {
 }
 
 async function askAI(prompt) {
-  // Prefer Gemini for speed; fall back to Groq if unavailable or fails
-  const geminiText = await callGemini(prompt);
-  if (geminiText) return geminiText;
+  const timeout = parseInt(process.env.SUMMARY_TIMEOUT_MS || '30000', 10);
+  
+  const aiPromise = (async () => {
+    // Prefer Gemini for speed; fall back to Groq if unavailable or fails
+    const geminiText = await callGemini(prompt);
+    if (geminiText) return geminiText;
 
-  const groqText = await callGroq(prompt);
-  if (groqText) return groqText;
+    const groqText = await callGroq(prompt);
+    if (groqText) return groqText;
 
-  return ""; // graceful fallback
+    return ""; // graceful fallback
+  })();
+  
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('AI request timeout')), timeout)
+  );
+  
+  try {
+    return await Promise.race([aiPromise, timeoutPromise]);
+  } catch (error) {
+    console.error('❌ askAI error:', error.message);
+    return ""; // graceful fallback
+  }
 }
 
 async function askAIJson(prompt) {
-  // Prefer Gemini JSON; fallback to Groq JSON; both reuse parseJsonSafely
-  const geminiText = await callGemini(prompt);
-  const geminiJson = parseJsonSafely(geminiText);
-  if (geminiJson) return geminiJson;
+  const timeout = parseInt(process.env.SUMMARY_TIMEOUT_MS || '30000', 10);
+  
+  const aiPromise = (async () => {
+    // Prefer Gemini JSON; fallback to Groq JSON; both reuse parseJsonSafely
+    const geminiText = await callGemini(prompt);
+    const geminiJson = parseJsonSafely(geminiText);
+    if (geminiJson) return geminiJson;
 
-  const groqText = await callGroq(prompt);
-  const groqJson = parseJsonSafely(groqText);
-  if (groqJson) return groqJson;
+    const groqText = await callGroq(prompt);
+    const groqJson = parseJsonSafely(groqText);
+    if (groqJson) return groqJson;
 
-  return null;
+    return null;
+  })();
+  
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('AI JSON request timeout')), timeout)
+  );
+  
+  try {
+    return await Promise.race([aiPromise, timeoutPromise]);
+  } catch (error) {
+    console.error('❌ askAIJson error:', error.message);
+    return null; // graceful fallback
+  }
 }
 
 module.exports = {

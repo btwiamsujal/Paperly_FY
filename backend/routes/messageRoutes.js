@@ -1,17 +1,22 @@
 const express = require('express');
+const router = express.Router();
+const auth = require('../middleware/auth');
+const { 
+  uploadSingle, 
+  handleUploadError, 
+  validateMessageData 
+} = require('../middleware/upload');
 const {
   sendMessage,
+  getConversations,
+  getUnreadCount,
+  searchMessages,
   getMessages,
   markMessagesAsSeen,
-  getConversations,
   deleteMessage,
-  getUnreadCount,
-  searchMessages
+  acceptRequest,
+  deleteRequest
 } = require('../controllers/messageController');
-const auth = require('../middleware/auth');
-const { uploadSingle, handleUploadError, validateMessageData } = require('../middleware/upload');
-
-const router = express.Router();
 
 // All routes require authentication
 router.use(auth);
@@ -50,5 +55,15 @@ router.patch('/:userId/seen', markMessagesAsSeen);
 // @desc Delete a message (soft delete)
 // @access Private
 router.delete('/:messageId', deleteMessage);
+
+// @route PATCH /api/messages/requests/:id/accept
+// @desc Accept a message request
+// @access Private
+router.patch('/requests/:id/accept', acceptRequest);
+
+// @route DELETE /api/messages/requests/:id
+// @desc Decline/Delete a message request
+// @access Private
+router.delete('/requests/:id', deleteRequest);
 
 module.exports = router;

@@ -19,6 +19,11 @@ const conversationSchema = new mongoose.Schema({
     of: Number,
     default: new Map()
   },
+  isAcceptedBy: {
+    type: Map,
+    of: Boolean,
+    default: new Map()
+  },
   isArchived: {
     type: Boolean,
     default: false
@@ -55,6 +60,10 @@ conversationSchema.statics.findOrCreate = async function(user1Id, user2Id) {
       unreadCount: new Map([
         [user1Id.toString(), 0],
         [user2Id.toString(), 0]
+      ]),
+      isAcceptedBy: new Map([
+        [user1Id.toString(), true], // Creator always accepts
+        [user2Id.toString(), false] // Receiver must accept (request)
       ])
     });
   }

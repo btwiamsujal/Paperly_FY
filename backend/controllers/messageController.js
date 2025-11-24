@@ -93,6 +93,12 @@ const sendMessage = async (req, res) => {
 
     // Update or create conversation
     const conversation = await Conversation.findOrCreate(senderId, receiverId);
+    
+    // Auto-accept if the sender is replying (they might have been in "requests")
+    if (conversation.isAcceptedBy && conversation.isAcceptedBy.get(senderId.toString()) === false) {
+      conversation.isAcceptedBy.set(senderId.toString(), true);
+    }
+
     conversation.lastMessage = message._id;
     conversation.lastActivity = new Date();
     await conversation.incrementUnreadCount(receiverId);
@@ -260,7 +266,7 @@ const markMessagesAsSeen = async (req, res) => {
   }
 };
 
-// @desc Get all conversations for current user
+// @desc Get all conversations for current user (split into chats and requests)
 // @route GET /api/messages/conversations
 // @access Private
 const getConversations = async (req, res) => {
@@ -278,21 +284,35 @@ const getConversations = async (req, res) => {
     .limit(limit * 1)
     .skip((page - 1) * limit);
 
-    // Format conversations for frontend
-    const formattedConversations = conversations.map(conv => {
+    const chats = [];
+    const requests = [];
+
+    conversations.forEach(conv => {
       const otherUser = conv.participants.find(p => p._id.toString() !== currentUserId);
-      return {
+      const isAccepted = conv.isAcceptedBy ? conv.isAcceptedBy.get(currentUserId) : true; // Default to true for legacy
+
+      const formattedConv = {
         id: conv._id,
         user: otherUser,
         lastMessage: conv.lastMessage,
         unreadCount: conv.getUnreadCountForUser(currentUserId),
-        lastActivity: conv.lastActivity
+        lastActivity: conv.lastActivity,
+        isAccepted
       };
+
+      if (isAccepted) {
+        chats.push(formattedConv);
+      } else {
+        requests.push(formattedConv);
+      }
     });
 
     res.json({
       success: true,
-      data: formattedConversations,
+      data: {
+        chats,
+        requests
+      },
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -306,6 +326,77 @@ const getConversations = async (req, res) => {
       success: false,
       message: 'Failed to fetch conversations'
     });
+  }
+};
+
+// @desc Accept a message request
+// @route PATCH /api/messages/requests/:id/accept
+// @access Private
+const acceptRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user.id;
+
+    const conversation = await Conversation.findOne({
+      _id: id,
+      participants: currentUserId
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    if (!conversation.isAcceptedBy) {
+      conversation.isAcceptedBy = new Map();
+    }
+
+    conversation.isAcceptedBy.set(currentUserId, true);
+    await conversation.save();
+
+    res.json({ success: true, message: 'Request accepted' });
+  } catch (error) {
+    console.error('Accept request error:', error);
+    res.status(500).json({ message: 'Failed to accept request' });
+  }
+};
+
+// @desc Delete/Decline a message request
+// @route DELETE /api/messages/requests/:id
+// @access Private
+const deleteRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user.id;
+
+    // Verify it's a request for this user
+    const conversation = await Conversation.findOne({
+      _id: id,
+      participants: currentUserId
+    });
+
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    // If it's a request (not accepted yet), we can just "leave" or delete it.
+    // For simplicity, let's remove the user from participants or delete if 1-on-1.
+    // Since it's 1-on-1, we can just delete the conversation or hide it.
+    // Let's delete it for now as "Decline".
+    
+    await Conversation.findByIdAndDelete(id);
+    // Also delete messages? Maybe keep them but orphaned. 
+    // Better to delete messages too to clean up.
+    await Message.deleteMany({ 
+      $or: [
+        { senderId: currentUserId, receiverId: conversation.participants.find(p => p.toString() !== currentUserId) },
+        { senderId: conversation.participants.find(p => p.toString() !== currentUserId), receiverId: currentUserId }
+      ]
+    });
+
+    res.json({ success: true, message: 'Request declined and conversation deleted' });
+  } catch (error) {
+    console.error('Delete request error:', error);
+    res.status(500).json({ message: 'Failed to delete request' });
   }
 };
 
@@ -448,5 +539,7 @@ module.exports = {
   getConversations,
   deleteMessage,
   getUnreadCount,
-  searchMessages
+  searchMessages,
+  acceptRequest,
+  deleteRequest
 };

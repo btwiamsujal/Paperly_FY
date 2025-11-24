@@ -10,6 +10,11 @@ class ChatboxManager {
         this.typingTimeout = null;
         this.isTyping = false;
         
+        // State for tabs
+        this.activeTab = 'chats'; // 'chats' or 'requests'
+        this.chats = [];
+        this.requests = [];
+        
         // API Base URL
         this.API_BASE = 'http://localhost:5002/api';
         this.AUTH_URL = 'http://localhost:5002/frontend/auth/auth.html';
@@ -113,6 +118,20 @@ class ChatboxManager {
                 this.onlineUsers.set(user.id, user);
             });
         });
+
+        // Message status updates
+        this.socket.on('messageDelivered', (data) => {
+            this.updateMessageStatus(data.messageId, 'delivered');
+        });
+
+        this.socket.on('messagesSeen', (data) => {
+            // Update all messages in the conversation to 'seen'
+            if (this.currentChat && data.conversationId) {
+                this.updateConversationMessagesStatus('seen');
+            }
+            // Reload conversations to update unread counts
+            this.loadConversations();
+        });
     }
 
     async loadCurrentUser() {
@@ -132,6 +151,20 @@ class ChatboxManager {
     }
 
     initEventListeners() {
+        // Tab switching
+        const tabs = document.querySelectorAll('.chat-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Update active state
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Switch tab
+                this.activeTab = tab.dataset.tab;
+                this.renderChatList();
+            });
+        });
+
         // Search functionality
         const userSearch = document.getElementById('userSearch');
         if (userSearch) {
@@ -267,13 +300,23 @@ class ChatboxManager {
         // Join conversation room
         this.socket.emit('joinConversation', { otherUserId: user._id });
 
+        // Mark messages as seen (clears unread badge)
+        await this.markMessagesAsSeen(user._id);
+
         // Load messages
         await this.loadMessages(user._id);
+        
+        // Reload conversations to update unread badge
+        await this.loadConversations();
     }
 
     updateChatHeader(user) {
         const header = document.getElementById('chatHeader');
         const isOnline = this.onlineUsers.has(user._id);
+        
+        // Check if this is a request
+        const isRequest = this.requests.some(req => req.user._id === user._id);
+        const inputArea = document.querySelector('.chat-input-area');
 
         header.innerHTML = `
             <div class="chat-header-avatar">
@@ -285,15 +328,49 @@ class ChatboxManager {
             </div>
         `;
 
-        // Show loading state in messages area while fetching
-        const messagesContainer = document.getElementById('chatMessages');
-        if (messagesContainer) {
-            messagesContainer.innerHTML = `
-                <div style="text-align: center; color: #666;">
-                    <div style="margin-bottom: 10px;">💬</div>
-                    Loading messages...
+        // Handle Request UI
+        if (isRequest) {
+            if (inputArea) inputArea.style.display = 'none';
+            
+            // Add request banner to header or messages area
+            // We'll add it to the messages container as a sticky header or just append it
+            const requestBanner = document.createElement('div');
+            requestBanner.className = 'request-banner';
+            requestBanner.innerHTML = `
+                <div style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #eee; text-align: center;">
+                    <p style="margin-bottom: 10px; color: #666;">${user.name} wants to send you a message.</p>
+                    <div style="display: flex; justify-content: center; gap: 10px;">
+                        <button class="accept-btn" onclick="chatboxManager.acceptRequest('${this.requests.find(r => r.user._id === user._id).id}')" style="width: auto; padding: 8px 20px; border-radius: 20px;">Accept</button>
+                        <button class="decline-btn" onclick="chatboxManager.declineRequest('${this.requests.find(r => r.user._id === user._id).id}')" style="width: auto; padding: 8px 20px; border-radius: 20px;">Decline</button>
+                    </div>
                 </div>
             `;
+            
+            // We need to insert this after the header or inside the message area
+            // Let's put it in the message area but clear it first
+            const messagesContainer = document.getElementById('chatMessages');
+            if (messagesContainer) {
+                messagesContainer.innerHTML = '';
+                messagesContainer.appendChild(requestBanner);
+                
+                // Add a container for messages below the banner
+                const msgList = document.createElement('div');
+                msgList.id = 'actualMessages';
+                messagesContainer.appendChild(msgList);
+            }
+        } else {
+            if (inputArea) inputArea.style.display = 'block';
+            
+            // Show loading state in messages area while fetching
+            const messagesContainer = document.getElementById('chatMessages');
+            if (messagesContainer) {
+                messagesContainer.innerHTML = `
+                    <div style="text-align: center; color: #666;">
+                        <div style="margin-bottom: 10px;">💬</div>
+                        Loading messages...
+                    </div>
+                `;
+            }
         }
     }
 
@@ -339,11 +416,12 @@ class ChatboxManager {
             const time = this.formatMessageTime(message.createdAt);
 
             let inner = '';
+            const statusIcon = isOwn ? this.getStatusIcon(message.status) : '';
             if (message.messageType === 'text') {
                 inner = `
                     <div class="message-content">
                         <div class="message-text">${this.escapeHtml(message.content)}</div>
-                        <div class="message-time">${time}</div>
+                        <div class="message-time">${time} ${statusIcon}</div>
                     </div>`;
             } else if (message.messageType === 'document') {
                 const fileName = message.fileName || 'Document';
@@ -356,20 +434,20 @@ class ChatboxManager {
                                 ${message.fileSize ? `<div class="message-file-size">${(message.fileSize/1024/1024).toFixed(2)} MB</div>` : ''}
                             </div>
                         </div>
-                        <div class="message-time">${time}</div>
+                        <div class="message-time">${time} ${statusIcon}</div>
                     </div>`;
             } else if (message.messageType === 'media') {
                 const isImage = (message.mimeType || '').startsWith('image/');
                 inner = `
                     <div class="message-content">
                         ${isImage ? `<img src="${message.fileUrl}" alt="media" style="max-width: 260px; border-radius: 10px; display:block;">` : `<video src="${message.fileUrl}" controls style="max-width: 260px; border-radius: 10px; display:block;"></video>`}
-                        <div class="message-time">${time}</div>
+                        <div class="message-time">${time} ${statusIcon}</div>
                     </div>`;
             } else if (message.messageType === 'voice') {
                 inner = `
                     <div class="message-content">
                         <audio controls src="${message.fileUrl}"></audio>
-                        <div class="message-time">${time}</div>
+                        <div class="message-time">${time} ${statusIcon}</div>
                     </div>`;
             }
 
@@ -534,13 +612,17 @@ class ChatboxManager {
 
         const messageElement = document.createElement('div');
         messageElement.className = `message ${isOwn ? 'own' : ''}`;
+        if (message._id) {
+            messageElement.dataset.messageId = message._id;
+        }
 
+        const statusIcon = isOwn ? this.getStatusIcon(message.status) : '';
         let inner = '';
         if (message.messageType === 'text') {
             inner = `
                 <div class="message-content">
                     <div class="message-text">${this.escapeHtml(message.content)}</div>
-                    <div class="message-time">${time}</div>
+                    <div class="message-time">${time} ${statusIcon}</div>
                 </div>`;
         } else if (message.messageType === 'document') {
             const fileName = message.fileName || 'Document';
@@ -553,20 +635,20 @@ class ChatboxManager {
                             ${message.fileSize ? `<div class="message-file-size">${(message.fileSize/1024/1024).toFixed(2)} MB</div>` : ''}
                         </div>
                     </div>
-                    <div class="message-time">${time}</div>
+                    <div class="message-time">${time} ${statusIcon}</div>
                 </div>`;
         } else if (message.messageType === 'media') {
             const isImage = (message.mimeType || '').startsWith('image/');
             inner = `
                 <div class="message-content">
                     ${isImage ? `<img src="${message.fileUrl}" alt="media" style="max-width: 260px; border-radius: 10px; display:block;">` : `<video src="${message.fileUrl}" controls style="max-width: 260px; border-radius: 10px; display:block;"></video>`}
-                    <div class="message-time">${time}</div>
+                    <div class="message-time">${time} ${statusIcon}</div>
                 </div>`;
         } else if (message.messageType === 'voice') {
             inner = `
                 <div class="message-content">
                     <audio controls src="${message.fileUrl}"></audio>
-                    <div class="message-time">${time}</div>
+                    <div class="message-time">${time} ${statusIcon}</div>
                 </div>`;
         }
 
@@ -597,11 +679,24 @@ class ChatboxManager {
             const response = await this.apiCall('/messages/conversations', 'GET');
             
             if (response.success) {
-                this.conversations = response.data;
+                this.chats = response.data.chats || [];
+                this.requests = response.data.requests || [];
                 this.renderChatList();
+                this.updateRequestBadge();
             }
         } catch (error) {
             console.error('Failed to load conversations:', error);
+        }
+    }
+
+    updateRequestBadge() {
+        const requestTab = document.querySelector('.chat-tab[data-tab="requests"]');
+        if (requestTab) {
+            if (this.requests.length > 0) {
+                requestTab.innerHTML = `Requests <span class="badge">${this.requests.length}</span>`;
+            } else {
+                requestTab.textContent = 'Requests';
+            }
         }
     }
 
@@ -609,21 +704,24 @@ class ChatboxManager {
         const chatList = document.getElementById('chatList');
         if (!chatList) return;
 
-        if (this.conversations.length === 0) {
+        const items = this.activeTab === 'chats' ? this.chats : this.requests;
+
+        if (items.length === 0) {
             chatList.innerHTML = `
                 <div class="empty-chat-list" style="text-align: center; padding: 40px 20px; color: #666;">
                     <div style="font-size: 2em; margin-bottom: 15px; opacity: 0.5;">💬</div>
-                    <div>No conversations yet</div>
-                    <div style="font-size: 0.9em; margin-top: 5px;">Start a new chat to begin</div>
+                    <div>No ${this.activeTab === 'chats' ? 'conversations' : 'requests'}</div>
+                    ${this.activeTab === 'chats' ? '<div style="font-size: 0.9em; margin-top: 5px;">Start a new chat to begin</div>' : ''}
                 </div>
             `;
             return;
         }
 
-        chatList.innerHTML = this.conversations.map(conv => {
+        chatList.innerHTML = items.map(conv => {
             const time = this.formatMessageTime(conv.lastActivity);
             const preview = this.formatConversationPreview(conv.lastMessage);
             const unreadCount = conv.unreadCount || 0;
+            const isRequest = this.activeTab === 'requests';
 
             return `
                 <div class="chat-item" data-user-id="${conv.user._id}"
@@ -637,8 +735,14 @@ class ChatboxManager {
                     </div>
                     <div class="chat-meta">
                         <div class="chat-time">${time}</div>
-                        ${unreadCount > 0 ? `<span class="chat-unread">${unreadCount}</span>` : ''}
+                        ${!isRequest && unreadCount > 0 ? `<span class="chat-unread">${unreadCount}</span>` : ''}
                     </div>
+                    ${isRequest ? `
+                    <div class="request-actions" onclick="event.stopPropagation()">
+                        <button class="accept-btn" onclick="chatboxManager.acceptRequest('${conv.id}')" title="Accept">✓</button>
+                        <button class="decline-btn" onclick="chatboxManager.declineRequest('${conv.id}')" title="Decline">✕</button>
+                    </div>
+                    ` : ''}
                 </div>
             `;
         }).join('');
@@ -646,6 +750,35 @@ class ChatboxManager {
         // If a chat is already open, ensure it appears active
         if (this.currentChat && this.currentChat.user) {
             this.setActiveChatItem(this.currentChat.user._id);
+        }
+    }
+
+    async acceptRequest(conversationId) {
+        try {
+            const response = await this.apiCall(`/messages/requests/${conversationId}/accept`, 'PATCH');
+            if (response.success) {
+                await this.loadConversations();
+                // Switch to chats tab to show the new chat
+                const chatsTab = document.querySelector('.chat-tab[data-tab="chats"]');
+                if (chatsTab) chatsTab.click();
+            }
+        } catch (error) {
+            console.error('Failed to accept request:', error);
+            this.showError('Failed to accept request');
+        }
+    }
+
+    async declineRequest(conversationId) {
+        if (!confirm('Are you sure you want to decline and delete this request?')) return;
+        
+        try {
+            const response = await this.apiCall(`/messages/requests/${conversationId}`, 'DELETE');
+            if (response.success) {
+                await this.loadConversations();
+            }
+        } catch (error) {
+            console.error('Failed to decline request:', error);
+            this.showError('Failed to decline request');
         }
     }
 
@@ -723,6 +856,41 @@ class ChatboxManager {
                 statusEl.style.color = status === 'online' ? '#28a745' : '#666';
             }
         }
+    }
+
+    getStatusIcon(status) {
+        if (!status) return '';
+        switch (status) {
+            case 'sent':
+                return '<span class="status-icon">✓</span>';
+            case 'delivered':
+            case 'seen':
+                return '<span class="status-icon">✓✓</span>';
+            default:
+                return '';
+        }
+    }
+
+    updateMessageStatus(messageId, newStatus) {
+        // Find and update the message status in the UI
+        const messages = document.querySelectorAll('.message.own');
+        messages.forEach(msgEl => {
+            // We need to track message IDs in the DOM
+            if (msgEl.dataset.messageId === messageId) {
+                const statusIcon = msgEl.querySelector('.status-icon');
+                if (statusIcon) {
+                    statusIcon.textContent = newStatus === 'sent' ? '✓' : '✓✓';
+                }
+            }
+        });
+    }
+
+    updateConversationMessagesStatus(newStatus) {
+        // Update all own messages in the current conversation
+        const messages = document.querySelectorAll('.message.own .status-icon');
+        messages.forEach(icon => {
+            icon.textContent = '✓✓';
+        });
     }
 
     async markMessagesAsSeen(userId) {
