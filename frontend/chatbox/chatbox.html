@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="../common/theme.css">
   <link rel="stylesheet" href="../common/sidebar.css">
   <link rel="stylesheet" href="chatbox.css">
+  <link rel="stylesheet" href="figma-viewer.css">
+  <link rel="stylesheet" href="upload-styles.css">
 </head>
 <body>
   <div class="main-content">
@@ -55,23 +57,93 @@
     </div>
   </div>
 
-  <!-- File Viewer Modal -->
-  <div class="viewer-overlay" id="chatViewerModal">
-    <div class="viewer-container">
-      <div class="viewer-header">
-        <div class="viewer-title" id="chatViewerTitle">File</div>
-        <div class="viewer-actions">
-          <button class="viewer-btn" id="chatZoomOut" title="Zoom out">−</button>
-          <span class="viewer-zoom" id="chatZoomDisplay">100%</span>
-          <button class="viewer-btn" id="chatZoomIn" title="Zoom in">+</button>
-          <button class="viewer-close" id="chatViewerClose" title="Close">×</button>
+  <!-- Modern Figma-Style Viewer Modal -->
+  <div class="modern-viewer-backdrop" id="chatViewerModal">
+    <div class="figma-viewer-container">
+      <!-- Modern Header -->
+      <header class="figma-viewer-header">
+        <div class="viewer-info">
+          <h1 class="figma-viewer-title" id="chatViewerTitle">Document</h1>
+          <div class="figma-viewer-meta" id="chatViewerMeta"></div>
         </div>
-      </div>
-      <div class="viewer-body">
-        <div class="viewer-canvas" id="chatViewerBody"></div>
-        <div class="viewer-loading" id="chatViewerLoading" style="display:none;">Loading…</div>
-        <div class="viewer-error" id="chatViewerError" style="display:none;">Unable to load file</div>
-      </div>
+        
+        <div class="figma-toolbar">
+          <div class="toolbar-section">
+            <button class="figma-tool-btn" id="chatZoomOut" title="Zoom out">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="M21 21l-4.35-4.35"></path>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+              </svg>
+            </button>
+            <span class="figma-zoom-display" id="chatZoomDisplay">100%</span>
+            <button class="figma-tool-btn" id="chatZoomIn" title="Zoom in">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="M21 21l-4.35-4.35"></path>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="toolbar-section">
+            <button class="figma-tool-btn" id="chatZoomReset" title="Reset zoom">100%</button>
+            <button class="figma-tool-btn" id="chatZoomFit" title="Fit to width">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                <path d="M9 12h6"></path>
+                <path d="M11 10l-2 2l2 2"></path>
+                <path d="M13 10l2 2l-2 2"></path>
+              </svg>
+            </button>
+            <button class="figma-tool-btn" id="chatFullscreenBtn" title="Fullscreen">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15,3 21,3 21,9"></polyline>
+                <polyline points="9,21 3,21 3,15"></polyline>
+                <line x1="21" y1="3" x2="14" y2="10"></line>
+                <line x1="3" y1="21" x2="10" y2="14"></line>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="toolbar-section">
+            <button class="figma-close-btn" id="chatViewerClose" title="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+      
+      <!-- Modern Content Area -->
+      <main class="figma-viewer-main">
+        <div class="figma-canvas-container">
+          <div class="figma-canvas" id="chatViewerBody"></div>
+        </div>
+        
+        <!-- Loading State -->
+        <div class="figma-loading" id="chatViewerLoading" style="display: none;">
+          <div class="figma-spinner"></div>
+          <p>Loading document...</p>
+        </div>
+        
+        <!-- Error State -->
+        <div class="figma-error" id="chatViewerError" style="display: none;">
+          <div class="figma-error-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <h3>Unable to load document</h3>
+          <p id="chatErrorMessage">Something went wrong while loading this file.</p>
+        </div>
+      </main>
+      
     </div>
   </div>
 
@@ -93,6 +165,8 @@
 
   <script src="../common/sidebar.js"></script>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- PDF.js for PDF rendering -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="chatbox.js"></script>
 </body>
 </html>

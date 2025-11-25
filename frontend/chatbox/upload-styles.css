@@ -1,0 +1,179 @@
+/* Message Status Icons */
+.status-icon {
+    font-size: 0.75rem;
+    margin-left: 4px;
+    color: #999;
+    display: inline-block;
+}
+
+.message.own .status-icon {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ========== OPTIMISTIC UPLOAD STYLES ========== */
+
+/* Uploading message state */
+.message.uploading {
+    opacity: 0.8;
+}
+
+.message.uploading .message-content {
+    position: relative;
+}
+
+/* Upload indicator container */
+.upload-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+    font-size: 0.85rem;
+}
+
+.message.own .upload-indicator {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Upload spinner */
+.upload-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-top: 2px solid #000;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.message.own .upload-spinner {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid #fff;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Upload progress bar */
+.upload-progress {
+    flex: 1;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.message.own .upload-progress {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.upload-progress-bar {
+    height: 100%;
+    background: #000;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.message.own .upload-progress-bar {
+    background: #fff;
+}
+
+/* Upload progress text */
+.upload-progress-text {
+    font-size: 0.75rem;
+    color: #666;
+    min-width: 35px;
+    text-align: right;
+}
+
+.message.own .upload-progress-text {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Failed upload state */
+.message.failed {
+    opacity: 0.6;
+}
+
+.upload-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #dc3545;
+}
+
+.error-icon {
+    font-size: 1rem;
+}
+
+.error-text {
+    flex: 1;
+    font-size: 0.85rem;
+}
+
+.retry-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.retry-btn:hover {
+    background: #c82333;
+}
+
+/* ========== IMAGE ASPECT RATIO FIX ========== */
+
+/* Fix image cropping - preserve aspect ratio */
+.message-image {
+    max-width: 300px;
+    max-height: 400px;
+    width: auto;
+    height: auto;
+    object-fit: contain !important;
+    /* Not cover! */
+    border-radius: 12px;
+    display: block;
+    background: #f0f0f0;
+}
+
+.message-video {
+    max-width: 300px;
+    max-height: 400px;
+    width: auto;
+    height: auto;
+    border-radius: 12px;
+    display: block;
+}
+
+/* Ensure media files look good in both sent/received */
+.message-file.media-file {
+    display: inline-block;
+    position: relative;
+}
+
+.message-file.media-file img,
+.message-file.media-file video {
+    cursor: pointer;
+}
+
+/* Add subtle shadow to images */
+.message-image {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.message.own .message-image {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}

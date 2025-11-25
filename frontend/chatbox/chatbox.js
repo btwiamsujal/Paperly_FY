@@ -407,8 +407,9 @@ class ChatboxManager {
         messagesContainer.onclick = (e) => {
             const fileEl = e.target.closest('.message-file');
             if (!fileEl) return;
-            const { fileUrl, fileName, mimeType, type } = fileEl.dataset;
-            this.openFileViewer({ fileUrl, fileName, mimeType, messageType: type });
+            const { fileUrl, fileName, mimeType, type, messageId } = fileEl.dataset;
+            console.log('File click data:', { fileUrl, fileName, mimeType, type, messageId }); // Debug log
+            this.openFileViewer({ fileUrl, fileName, mimeType, messageType: type, messageId });
         };
 
         messagesContainer.innerHTML = messages.map(message => {
@@ -427,7 +428,7 @@ class ChatboxManager {
                 const fileName = message.fileName || 'Document';
             inner = `
                     <div class="message-content">
-                        <div class="message-file" data-file-url="${message.fileUrl}" data-file-name="${this.escapeHtml(fileName)}" data-mime-type="${message.mimeType || ''}" data-type="document">
+                        <div class="message-file" data-file-url="${message.fileUrl}" data-file-name="${this.escapeHtml(fileName)}" data-mime-type="${message.mimeType || ''}" data-type="document" data-message-id="${message._id}">
                             <div class="file-icon">📄</div>
                             <div class="message-file-info">
                                 <div class="message-file-name">${this.escapeHtml(fileName)}</div>
@@ -438,9 +439,12 @@ class ChatboxManager {
                     </div>`;
             } else if (message.messageType === 'media') {
                 const isImage = (message.mimeType || '').startsWith('image/');
+                const fileName = message.fileName || (isImage ? 'Image' : 'Video');
                 inner = `
                     <div class="message-content">
-                        ${isImage ? `<img src="${message.fileUrl}" alt="media" style="max-width: 260px; border-radius: 10px; display:block;">` : `<video src="${message.fileUrl}" controls style="max-width: 260px; border-radius: 10px; display:block;"></video>`}
+                        <div class="message-file media-file" data-file-url="${message.fileUrl}" data-file-name="${this.escapeHtml(fileName)}" data-mime-type="${message.mimeType || ''}" data-type="media" data-message-id="${message._id}" style="cursor: pointer;">
+                            ${isImage ? `<img src="${message.fileUrl}" alt="media" style="max-width: 260px; border-radius: 10px; display:block;">` : `<video src="${message.fileUrl}" controls style="max-width: 260px; border-radius: 10px; display:block;"></video>`}
+                        </div>
                         <div class="message-time">${time} ${statusIcon}</div>
                     </div>`;
             } else if (message.messageType === 'voice') {
@@ -501,24 +505,161 @@ class ChatboxManager {
 
     async sendAttachment(file) {
         if (!this.currentChat) return;
+        
         const messageType = this.detectMessageType(file.type);
+        
+        // 1. Create optimistic message with temporary ID
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const filePreviewUrl = URL.createObjectURL(file);
+        
+        const optimisticMessage = {
+            _id: tempId,
+            content: '',
+            messageType: messageType,
+            fileUrl: filePreviewUrl,
+            fileName: file.name,
+            mimeType: file.type,
+            senderId: { _id: this.currentUser._id, name: this.currentUser.name },
+            receiverId: this.currentChat.user._id,
+            createdAt: new Date().toISOString(),
+            uploading: true,
+            uploadProgress: 0,
+            tempFile: true
+        };
+        
+        // 2. Display message immediately
+        this.addMessageToUI(optimisticMessage);
+        
+        // 3. Prepare form data
         const formData = new FormData();
         formData.append('receiverId', this.currentChat.user._id);
         formData.append('messageType', messageType);
         formData.append('file', file);
-
+        
         try {
-            const response = await this.apiCall('/messages/send', 'POST', formData);
+            // 4. Upload with progress tracking
+            const response = await this.uploadWithProgress(formData, tempId);
+            
             if (response.success) {
-                this.addMessageToUI(response.data);
+                // 5. Replace optimistic message with real message
+                this.replaceOptimisticMessage(tempId, response.data);
+                URL.revokeObjectURL(filePreviewUrl);
                 this.loadConversations();
             } else {
-                this.showError('Failed to send attachment');
+                throw new Error(response.message || 'Upload failed');
             }
-        } catch (e) {
-            console.error('Attachment send failed:', e);
-            this.showError('Failed to send attachment');
+        } catch (error) {
+            console.error('Attachment upload failed:', error);
+            // 6. Mark message as failed
+            this.markMessageAsFailed(tempId, error.message);
+            URL.revokeObjectURL(filePreviewUrl);
         }
+    }
+    
+    // Upload file with progress tracking
+    uploadWithProgress(formData, tempId) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const token = localStorage.getItem('token');
+            
+            xhr.open('POST', `${this.API_BASE}/messages/send`, true);
+            if (token) {
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            }
+            
+            // Track upload progress
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = Math.round((e.loaded / e.total) * 100);
+                    this.updateMessageProgress(tempId, percentComplete);
+                }
+            };
+            
+            xhr.onload = () => {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(response);
+                    } else {
+                        reject(new Error(response.message || 'Upload failed'));
+                    }
+                } catch (e) {
+                    reject(new Error('Invalid server response'));
+                }
+            };
+            
+            xhr.onerror = () => reject(new Error('Network error'));
+            xhr.send(formData);
+        });
+    }
+    
+    // Update progress indicator for uploading message
+    updateMessageProgress(tempId, progress) {
+        const messageEl = document.querySelector(`[data-message-id="${tempId}"]`);
+        if (!messageEl) return;
+        
+        const progressBar = messageEl.querySelector('.upload-progress-bar');
+        const progressText = messageEl.querySelector('.upload-progress-text');
+        
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+        }
+        if (progressText) {
+            progressText.textContent = `${progress}%`;
+        }
+    }
+    
+    // Replace optimistic message with real message from server
+    replaceOptimisticMessage(tempId, realMessage) {
+        const messageEl = document.querySelector(`[data-message-id="${tempId}"]`);
+        if (!messageEl) return;
+        
+        // Update the message ID
+        messageEl.setAttribute('data-message-id', realMessage._id);
+        
+        // Remove uploading state
+        messageEl.classList.remove('uploading');
+        const uploadIndicator = messageEl.querySelector('.upload-indicator');
+        if (uploadIndicator) {
+            uploadIndicator.remove();
+        }
+        
+        // Update file URL to server URL
+        const img = messageEl.querySelector('img[src^="blob:"]');
+        if (img && realMessage.fileUrl) {
+            img.src = realMessage.fileUrl;
+        }
+    }
+    
+    // Mark message as failed with retry option
+    markMessageAsFailed(tempId, errorMessage) {
+        const messageEl = document.querySelector(`[data-message-id="${tempId}"]`);
+        if (!messageEl) return;
+        
+        messageEl.classList.remove('uploading');
+        messageEl.classList.add('failed');
+        
+        const uploadIndicator = messageEl.querySelector('.upload-indicator');
+        if (uploadIndicator) {
+            uploadIndicator.innerHTML = `
+                <div class="upload-error">
+                    <span class="error-icon">⚠️</span>
+                    <span class="error-text">Upload failed</span>
+                    <button class="retry-btn" onclick="chatboxManager.retryUpload('${tempId}')">Retry</button>
+                </div>
+            `;
+        }
+    }
+    
+    // Retry failed upload
+    async retryUpload(tempId) {
+        // For now, just remove the failed message
+        // In a full implementation, we'd store the file and retry
+        const messageEl = document.querySelector(`[data-message-id="${tempId}"]`);
+        if (messageEl) {
+            messageEl.remove();
+        }
+        this.showError('Please try uploading the file again');
     }
 
     openFileViewer(meta) {
@@ -538,10 +679,10 @@ class ChatboxManager {
         const fileName = meta.fileName || 'File';
         const mime = meta.mimeType || '';
         const type = meta.messageType || meta.type;
+        const messageId = meta.messageId || ''; // Get message ID for access control
         title.textContent = fileName;
 
         // Render by type
-        const canvas = document.getElementById('chatViewerBody');
         const show = (elHtml) => {
             body.innerHTML = elHtml;
             loading.style.display = 'none';
@@ -551,10 +692,12 @@ class ChatboxManager {
         };
         const escape = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 
+        console.log('Opening file viewer with type:', type); // Debug log
+
         if (type === 'media') {
-            const isImage = mime.startsWith('image/');
+            const isImage = mime.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName);
             show(isImage 
-              ? `<img src="${escape(fileUrl)}" alt="${escape(fileName)}">`
+              ? `<img src="${escape(fileUrl)}" alt="${escape(fileName)}" style="object-fit: contain;">`
               : `<video src="${escape(fileUrl)}" controls></video>`);
             return;
         }
@@ -562,20 +705,50 @@ class ChatboxManager {
             show(`<audio controls src="${escape(fileUrl)}"></audio>`);
             return;
         }
-        // Document: prefer PDF inline; otherwise iframe fallback
-        if ((mime && mime.includes('pdf')) || /\.pdf($|\?)/i.test(fileName)) {
-            const proxied = `/api/files/pdf?src=${encodeURIComponent(fileUrl)}`;
-            show(`<iframe class="pdf-frame" src="${proxied}"></iframe>`);
-            return;
+        if (type === 'document') {
+            // Document files should use our secure file serving endpoint
+            console.log('Handling document type file'); // Debug log
         }
-        // Office formats via Office viewer
-        if (/\.(docx?|pptx?|xlsx?)($|\?)/i.test(fileName)) {
-            const viewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fileUrl)}`;
-            show(`<iframe class="pdf-frame" src="${viewerUrl}"></iframe>`);
-            return;
+        
+        // For all other file types (including document), use our new secure file serving endpoint
+        if (messageId && fileUrl) {
+            // Use our new secure proxy to ensure correct headers and access control
+            const proxied = `/api/files/serve?url=${encodeURIComponent(fileUrl)}&messageId=${encodeURIComponent(messageId)}`;
+            console.log('Opening file with proxied URL:', proxied); // Debug log
+            if ((mime && mime.includes('pdf')) || /\.pdf($|\?)/i.test(fileName)) {
+                // PDF files - show in iframe
+                show(`<iframe class="pdf-frame" src="${proxied}" style="width:100%; height:100%; border:none;"></iframe>`);
+            } else if (mime.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(fileName)) {
+                // Image files - show inline
+                show(`<img src="${proxied}" alt="${escape(fileName)}" style="max-width:100%; max-height:100%; object-fit: contain;">`);
+            } else if (mime.startsWith('text/') || /\.(txt|md)$/i.test(fileName)) {
+                // Text files - show inline
+                show(`<iframe src="${proxied}" style="width:100%; height:100%; border:none;"></iframe>`);
+            } else {
+                // Other files - provide download option with fallback iframe
+                show(`
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:20px;">
+                        <div style="font-size:4rem;">📄</div>
+                        <div style="font-size:1.2rem;">${escape(fileName)}</div>
+                        <div style="display:flex; gap:10px;">
+                            <a href="${proxied}" target="_blank" download class="viewer-btn" style="text-decoration:none; color:black; padding:10px 20px; background:#f0f0f0; border-radius:8px;">Download</a>
+                            <a href="${proxied}" target="_blank" class="viewer-btn" style="text-decoration:none; color:white; padding:10px 20px; background:#000; border-radius:8px;">Open in New Tab</a>
+                        </div>
+                        <iframe src="${proxied}" style="width:100%; flex:1; border:1px solid #eee; margin-top:20px; border-radius:8px;"></iframe>
+                    </div>
+                `);
+            }
+        } else {
+            // Fallback for cases where we don't have messageId
+            console.log('No messageId available, using direct file URL'); // Debug log
+            show(`
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:20px;">
+                    <div style="font-size:4rem;">⚠️</div>
+                    <div style="font-size:1.2rem;">Unable to preview file</div>
+                    <a href="${escape(fileUrl)}" target="_blank" download class="viewer-btn" style="text-decoration:none; color:white; padding:10px 20px; background:#000; border-radius:8px;">Download File</a>
+                </div>
+            `);
         }
-        // Generic iframe fallback
-        show(`<iframe class="pdf-frame" src="${escape(fileUrl)}"></iframe>`);
     }
 
     updateViewerZoom() {
@@ -612,12 +785,31 @@ class ChatboxManager {
 
         const messageElement = document.createElement('div');
         messageElement.className = `message ${isOwn ? 'own' : ''}`;
+        
+        // Add uploading class if message is being uploaded
+        if (message.uploading) {
+            messageElement.classList.add('uploading');
+        }
+        
         if (message._id) {
             messageElement.dataset.messageId = message._id;
         }
 
         const statusIcon = isOwn ? this.getStatusIcon(message.status) : '';
         let inner = '';
+        console.log('Creating message element with type:', message.messageType); // Debug log
+        
+        // Upload progress indicator (shown for uploading messages)
+        const uploadIndicator = message.uploading ? `
+            <div class="upload-indicator">
+                <div class="upload-spinner"></div>
+                <div class="upload-progress">
+                    <div class="upload-progress-bar" style="width: ${message.uploadProgress || 0}%"></div>
+                </div>
+                <div class="upload-progress-text">${message.uploadProgress || 0}%</div>
+            </div>
+        ` : '';
+        
         if (message.messageType === 'text') {
             inner = `
                 <div class="message-content">
@@ -626,28 +818,40 @@ class ChatboxManager {
                 </div>`;
         } else if (message.messageType === 'document') {
             const fileName = message.fileName || 'Document';
+            console.log('Creating document message with data:', { 
+                fileUrl: message.fileUrl, 
+                fileName: fileName, 
+                mimeType: message.mimeType, 
+                messageId: message._id 
+            }); // Debug log
             inner = `
                 <div class="message-content">
-                    <div class="message-file" data-file-url="${message.fileUrl}" data-file-name="${this.escapeHtml(fileName)}" data-mime-type="${message.mimeType || ''}" data-type="document">
+                    <div class="message-file" data-file-url="${message.fileUrl}" data-file-name="${this.escapeHtml(fileName)}" data-mime-type="${message.mimeType || ''}" data-type="document" data-message-id="${message._id}">
                         <div class="file-icon">📄</div>
                         <div class="message-file-info">
                             <div class="message-file-name">${this.escapeHtml(fileName)}</div>
                             ${message.fileSize ? `<div class="message-file-size">${(message.fileSize/1024/1024).toFixed(2)} MB</div>` : ''}
                         </div>
                     </div>
+                    ${uploadIndicator}
                     <div class="message-time">${time} ${statusIcon}</div>
                 </div>`;
         } else if (message.messageType === 'media') {
             const isImage = (message.mimeType || '').startsWith('image/');
+            const fileName = message.fileName || (isImage ? 'Image' : 'Video');
             inner = `
                 <div class="message-content">
-                    ${isImage ? `<img src="${message.fileUrl}" alt="media" style="max-width: 260px; border-radius: 10px; display:block;">` : `<video src="${message.fileUrl}" controls style="max-width: 260px; border-radius: 10px; display:block;"></video>`}
+                    <div class="message-file media-file" data-file-url="${message.fileUrl}" data-file-name="${this.escapeHtml(fileName)}" data-mime-type="${message.mimeType || ''}" data-type="media" data-message-id="${message._id}" style="cursor: pointer;">
+                        ${isImage ? `<img src="${message.fileUrl}" alt="media" class="message-image">` : `<video src="${message.fileUrl}" controls class="message-video"></video>`}
+                    </div>
+                    ${uploadIndicator}
                     <div class="message-time">${time} ${statusIcon}</div>
                 </div>`;
         } else if (message.messageType === 'voice') {
             inner = `
                 <div class="message-content">
                     <audio controls src="${message.fileUrl}"></audio>
+                    ${uploadIndicator}
                     <div class="message-time">${time} ${statusIcon}</div>
                 </div>`;
         }

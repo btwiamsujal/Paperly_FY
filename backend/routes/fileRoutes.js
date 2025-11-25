@@ -5,6 +5,8 @@ const pdfParse = require("pdf-parse");
 const cloudinary = require("../config/cloudinary");
 const File = require("../models/File");
 const Note = require("../models/Note"); // ✅ Notes model
+const Message = require("../models/Message");
+const Conversation = require("../models/Conversation");
 const auth = require("../middleware/auth");
 const fetch = require("node-fetch");
 const { askAI, askAIJson } = require("../utils/aiClient");
@@ -133,6 +135,92 @@ router.delete("/notes/:id", auth, async (req, res) => {
   }
 });
 
+/* ========= GENERIC FILE SERVING WITH ACCESS CONTROL ========= */
+// Serves any file with proper headers and access control
+router.get("/serve", auth, async (req, res) => {
+  try {
+    const { url, messageId } = req.query;
+    if (!url) return res.status(400).json({ message: "Missing file URL parameter" });
+    if (!messageId) return res.status(400).json({ message: "Missing message ID parameter" });
+
+    // Validate URL
+    let fileUrl;
+    try { 
+      fileUrl = new URL(url); 
+    } catch (_) { 
+      console.error(`❌ Invalid URL provided: ${url}`);
+      return res.status(400).json({ message: "Invalid file URL" }); 
+    }
+    if (!/^https?:$/.test(fileUrl.protocol)) {
+      return res.status(400).json({ message: "Unsupported URL protocol" });
+    }
+
+    // Check if user has access to this file by verifying they are either sender or receiver
+    const message = await Message.findById(messageId);
+    if (!message) {
+      console.error(`❌ Message not found: ${messageId}`);
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Check if current user is either sender or receiver of the message
+    const currentUserId = req.user.id;
+    if (message.senderId.toString() !== currentUserId && message.receiverId.toString() !== currentUserId) {
+      console.error(`❌ Access denied for user ${currentUserId} to message ${messageId}`);
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    console.log(`📁 Serving file: ${message.fileName || 'Unknown'} (${message.mimeType || 'unknown type'}) for message ${messageId}`);
+
+    // Fetch the file from Cloudinary
+    const response = await fetch(url);
+    if (!response.ok || !response.body) {
+      console.error(`❌ File Proxy Fetch Failed: ${response.status} ${response.statusText} for URL: ${url}`);
+      return res.status(502).json({ message: "Failed to fetch file from storage" });
+    }
+
+    // Use MIME type from database (more reliable than Cloudinary headers)
+    const contentType = message.mimeType || response.headers.get('content-type') || 'application/octet-stream';
+    res.setHeader("Content-Type", contentType);
+    
+    // Set Content-Length if available
+    const contentLength = response.headers.get('content-length');
+    if (contentLength) {
+      res.setHeader("Content-Length", contentLength);
+    }
+    
+    // For inline viewing of common document types
+    const inlineTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/svg+xml',
+      'text/plain',
+      'text/html'
+    ];
+    
+    if (inlineTypes.includes(contentType) || contentType.startsWith('image/')) {
+      res.setHeader("Content-Disposition", 'inline');
+    } else {
+      // For other types, suggest download
+      const fileName = message.fileName || 'file';
+      const safeFileName = fileName.replace(/[^\w\s.-]/g, '_'); // Sanitize filename
+      res.setHeader("Content-Disposition", `attachment; filename="${safeFileName}"`);
+    }
+
+    // Add cache control for better performance
+    res.setHeader("Cache-Control", "private, max-age=3600");
+
+    console.log(`✅ Successfully serving file: ${message.fileName || 'Unknown'}`);
+    response.body.pipe(res);
+  } catch (error) {
+    console.error("❌ File serve error:", error);
+    if (!res.headersSent) res.status(500).json({ message: "Error serving file" });
+  }
+});
+
 /* ========= PDF INLINE PROXY ========= */
 // Serves a remote PDF inline with proper headers to avoid download prompts
 router.get("/pdf", auth, async (req, res) => {
@@ -147,6 +235,7 @@ router.get("/pdf", auth, async (req, res) => {
 
     const response = await fetch(src);
     if (!response.ok || !response.body) {
+      console.error(`❌ PDF Proxy Fetch Failed: ${response.status} ${response.statusText} for URL: ${src}`);
       return res.status(502).json({ message: "Failed to fetch PDF" });
     }
 
@@ -314,7 +403,8 @@ async function summarizeLarge(text) {
 
   // Fallback overview merge text-only
   const overview = await askAI(
-    `Merge the following partial overviews into a single, cohesive summary (200-350 words) with clear headings and short paragraphs. Avoid duplication, keep key ideas only.\n\n${partialOverviews.map((o, i) => `Part ${i + 1}:\n${o}`).join("\n\n")}`
+    'Merge the following partial overviews into a single, cohesive summary (200-350 words) with clear headings and short paragraphs. Avoid duplication, keep key ideas only.\n\n' +
+    partialOverviews.map((o, i) => `Part ${i + 1}:\n${o}`).join("\n\n")
   );
 
   return { overview, key_points, highlights };
