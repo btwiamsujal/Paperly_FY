@@ -372,9 +372,6 @@ class ClassroomManager {
                 </div>
                 ${resource.description ? `<div class="resource-description">${resource.description}</div>` : ''}
                 <div class="resource-actions">
-                    <button class="resource-btn primary" onclick="event.stopPropagation(); classroomManager.openFileViewer('${resource._id}')">
-                        👁️ Preview
-                    </button>
                     ${resource.fileUrl ? `
                     <a href="${resource.fileUrl}" target="_blank" class="resource-btn" onclick="event.stopPropagation()">
                         📥 Download
