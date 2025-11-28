@@ -100,6 +100,7 @@ app.use('/api/chat', chatRoutes); // Keep old chat for backward compatibility
 app.use('/api/messages', messageRoutes); // New enhanced messaging system
 app.use('/api/users', userRoutes); // User management and search
 app.use('/api/ai-summary', require('./routes/aiSummaryRoutes')); // AI Summaries
+app.use('/api/classrooms/:classroomId/resources', require('./routes/resourceRoutes')); // Resources
 
 // Protect frontend HTML pages by requiring a valid auth cookie on all HTML except the auth page
 const LOGIN_PAGE = '/frontend/auth/auth.html';

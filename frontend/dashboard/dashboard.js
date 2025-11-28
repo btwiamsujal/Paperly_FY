@@ -86,30 +86,9 @@ class DashboardManager {
         this.animateActivityItems();
         this.animateNoteItems();
         this.animateUpdateItems();
-
-        // NEW: Fetch joined classrooms and log the codes
-        fetch('/api/classroom/joined', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(res => res.json())
-        .then(data => {
-            console.log('Joined Classrooms:', data);
-            const classroomList = document.getElementById('joined-classrooms');
-            if (classroomList && Array.isArray(data.classrooms)) {
-                classroomList.innerHTML = '';
-                data.classrooms.forEach(cls => {
-                    const li = document.createElement('li');
-                    li.textContent = `${cls.name} (${cls.code})`;
-                    classroomList.appendChild(li);
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching joined classrooms:', error);
-        });
+        
+        // Use the standalone function to fetch and render classrooms
+        fetchJoinedClassrooms();
     }
 
     animateActivityItems() {
@@ -216,7 +195,7 @@ document.addEventListener('keydown', (e) => {
 function fetchJoinedClassrooms() {
   const token = localStorage.getItem('token');
 
-  fetch('/api/classroom/my', {
+  fetch('/api/classrooms/my', {
     headers: {
       'Authorization': `Bearer ${token}`
     }
@@ -250,6 +229,7 @@ function renderJoinedClassrooms(classrooms) {
       <h3>${classroom.name}</h3>
       <p>Code: ${classroom.code}</p>
       <button class="delete-classroom-btn">Delete</button>
+      <a href="../classroom/classroom-view.html?id=${classroom._id}" class="view-classroom-btn">View</a>
     `;
     joinedList.appendChild(li);
   });
@@ -290,38 +270,6 @@ function renderJoinedClassrooms(classrooms) {
 
 
 // Add call to fetchJoinedClassrooms on DOM load (if not already present)
-document.addEventListener('DOMContentLoaded', () => {
-  fetchJoinedClassrooms();
-});
+// Removed redundant DOMContentLoaded listener as it is handled in DashboardManager
 
-document.addEventListener('click', async (e) => {
-  if (e.target.classList.contains('delete-classroom-btn')) {
-    const card = e.target.closest('.classroom-card');
-    const classroomId = card.getAttribute('data-id');
-
-    if (confirm('Are you sure you want to delete this classroom?')) {
-      try {
-        const token = localStorage.getItem('token');
-
-        const res = await fetch(`/api/classroom/${classroomId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-          alert(data.message || 'Classroom deleted successfully');
-          card.remove();
-        } else {
-          alert(data.error || 'Failed to delete classroom');
-        }
-      } catch (err) {
-        console.error('Delete failed:', err);
-        alert('Something went wrong');
-      }
-    }
-  }
-});
+// Removed redundant global click listener for delete buttons as it is handled in renderJoinedClassrooms

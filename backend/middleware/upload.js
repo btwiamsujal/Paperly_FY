@@ -1,5 +1,6 @@
 const multer = require('multer');
 const path = require('path');
+const { storage: cloudinaryStorage } = require('../config/cloudinary');
 
 // File type validation
 const fileFilter = (req, file, cb) => {
@@ -27,8 +28,8 @@ const fileFilter = (req, file, cb) => {
   cb(null, true);
 };
 
-// Configure storage
-const storage = multer.diskStorage({
+// Configure local storage (keep for chat messages if needed, or switch to Cloudinary later)
+const localStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadPath = path.join(__dirname, '../uploads');
     cb(null, uploadPath);
@@ -43,7 +44,7 @@ const storage = multer.diskStorage({
 
 // Create multer instances for different use cases
 const upload = multer({
-  storage: storage,
+  storage: localStorage,
   fileFilter: fileFilter,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit
@@ -139,8 +140,39 @@ const getFileCategory = (mimetype) => {
   return 'unknown';
 };
 
+// Generic file filter for resources (no messageType check)
+const resourceFileFilter = (req, file, cb) => {
+  const allowedTypes = [
+    'application/pdf', 
+    'application/msword', 
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+    'application/vnd.ms-powerpoint', 
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation', 
+    'application/vnd.ms-excel', 
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 
+    'text/plain',
+    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'
+  ];
+
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Allowed types: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT, Images'));
+  }
+};
+
+// Middleware for resource upload using Cloudinary
+const uploadResource = multer({
+  storage: cloudinaryStorage,
+  fileFilter: resourceFileFilter,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+  }
+}).single('file');
+
 module.exports = {
   uploadSingle,
+  uploadResource, // Export the new middleware
   handleUploadError,
   validateMessageData,
   getFileCategory

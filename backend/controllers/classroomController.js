@@ -7,13 +7,14 @@ const generateCode = () => crypto.randomBytes(3).toString('hex');
 
 // ✅ Create a classroom
 exports.createClassroom = async (req, res) => {
-  const { name, description } = req.body;
+  const { name, subject, description } = req.body;
   const userId = req.user.id;
 
   try {
     const code = generateCode();
     const classroom = await Classroom.create({
       name,
+      subject,
       description,
       code,
       createdBy: userId,
@@ -33,6 +34,7 @@ exports.createClassroom = async (req, res) => {
       classroom: {
         _id: classroom._id,
         name: classroom.name,
+        subject: classroom.subject,
         description: classroom.description,
         code: classroom.code
       }
@@ -90,11 +92,35 @@ exports.getMyClassrooms = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const user = await User.findById(userId).populate('classrooms');
+    const user = await User.findById(userId).populate({
+      path: 'classrooms',
+      populate: { path: 'createdBy', select: 'name email' } // Optional: populate creator details if needed
+    });
+    
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    res.json({ classrooms: user.classrooms });
+    // Transform classrooms to include the user's role
+    const classroomsWithRole = user.classrooms.map(classroom => {
+      // Find the member entry for this user
+      const member = classroom.members.find(m => m.user.toString() === userId);
+      
+      return {
+        _id: classroom._id,
+        name: classroom.name,
+        subject: classroom.subject || 'General', // Fallback if subject is missing in model
+        code: classroom.code,
+        description: classroom.description,
+        createdBy: classroom.createdBy,
+        createdAt: classroom.createdAt,
+        role: member ? member.role : 'user', // Default to user if not found (shouldn't happen)
+        joinedAt: member ? member.joinedAt : classroom.createdAt,
+        membersCount: classroom.members.length
+      };
+    });
+
+    res.json({ classrooms: classroomsWithRole });
   } catch (err) {
+    console.error("Error in getMyClassrooms:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -134,13 +160,20 @@ exports.deleteClassroom = async (req, res) => {
 };
 
 // ✅ Promote user to admin
+// ✅ Promote user to sub-admin
 exports.promoteUser = async (req, res) => {
   const { classroomId, userId: targetUserId } = req.params;
+  const currentUserId = req.user.id;
 
   try {
     const classroom = await Classroom.findById(classroomId);
     if (!classroom) {
       return res.status(404).json({ message: 'Classroom not found' });
+    }
+
+    // Only creator (admin) can promote
+    if (classroom.createdBy.toString() !== currentUserId) {
+        return res.status(403).json({ message: 'Only the classroom creator can promote members' });
     }
 
     const member = classroom.members.find(member => 
@@ -154,12 +187,16 @@ exports.promoteUser = async (req, res) => {
     if (member.role === 'admin') {
       return res.status(400).json({ message: 'User is already an admin' });
     }
+    
+    if (member.role === 'sub-admin') {
+        return res.status(400).json({ message: 'User is already a sub-admin' });
+    }
 
-    member.role = 'admin';
+    member.role = 'sub-admin';
     await classroom.save();
 
     res.json({ 
-      message: 'User promoted to admin successfully',
+      message: 'User promoted to sub-admin successfully',
       member: {
         user: member.user,
         role: member.role,
@@ -173,6 +210,7 @@ exports.promoteUser = async (req, res) => {
 };
 
 // ✅ Demote admin to user
+// ✅ Demote sub-admin to user
 exports.demoteUser = async (req, res) => {
   const { classroomId, userId: targetUserId } = req.params;
   const currentUserId = req.user.id;
@@ -183,9 +221,9 @@ exports.demoteUser = async (req, res) => {
       return res.status(404).json({ message: 'Classroom not found' });
     }
 
-    // Prevent creator from being demoted
-    if (classroom.createdBy.toString() === targetUserId) {
-      return res.status(403).json({ message: 'Cannot demote the classroom creator' });
+    // Only creator (admin) can demote
+    if (classroom.createdBy.toString() !== currentUserId) {
+        return res.status(403).json({ message: 'Only the classroom creator can demote members' });
     }
 
     const member = classroom.members.find(member => 
@@ -198,6 +236,10 @@ exports.demoteUser = async (req, res) => {
 
     if (member.role === 'user') {
       return res.status(400).json({ message: 'User is already a regular user' });
+    }
+    
+    if (member.role === 'admin') {
+        return res.status(403).json({ message: 'Cannot demote an admin (creator)' });
     }
 
     member.role = 'user';

@@ -124,7 +124,7 @@
                       <div class="upload-icon">📁</div>
                       <h4>Drop files here or click to browse</h4>
                       <p>Supported formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, TXT</p>
-                      <input type="file" id="resourceFile" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt" style="display: none;">
+                      <input type="file" id="resourceFile" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.gif" style="display: none;">
                     </div>
                   </div>
                   
@@ -168,7 +168,63 @@
     </div>
   </div>
 
+  <!-- Figma-Style File Viewer Modal -->
+  <div class="figma-viewer-backdrop" id="chatViewerModal">
+    <div class="figma-viewer-container">
+      <div class="figma-viewer-header">
+        <div class="figma-viewer-title-section">
+          <h2 class="figma-viewer-title" id="chatViewerTitle">File Preview</h2>
+          <span class="figma-viewer-meta" id="chatViewerMeta"></span>
+        </div>
+        <button class="figma-viewer-close" id="chatViewerClose" aria-label="Close viewer">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="figma-viewer-toolbar">
+        <div class="figma-viewer-toolbar-left">
+          <button class="figma-viewer-tool-btn" id="chatZoomOut" title="Zoom Out">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M3 9h8v2H3z"/>
+            </svg>
+          </button>
+          <span class="figma-viewer-zoom-level" id="chatZoomLevel">100%</span>
+          <button class="figma-viewer-tool-btn" id="chatZoomIn" title="Zoom In">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9 3v6H3v2h6v6h2v-6h6V9h-6V3z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="figma-viewer-toolbar-right">
+          <button class="figma-viewer-tool-btn" id="chatFullscreen" title="Fullscreen">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M3 3h5v2H5v3H3V3zm9 0h5v5h-2V5h-3V3zM3 12h2v3h3v2H3v-5zm14 0h2v5h-5v-2h3v-3z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="figma-viewer-body" id="chatViewerBody">
+        <!-- File content will be rendered here -->
+      </div>
+
+      <div class="figma-viewer-loading" id="chatViewerLoading">
+        <div class="figma-loading-spinner"></div>
+        <p>Loading file...</p>
+      </div>
+
+      <div class="figma-viewer-error" id="chatViewerError" style="display: none;">
+        <div class="figma-error-icon">⚠️</div>
+        <h3>Failed to load file</h3>
+        <p id="chatErrorMessage">An error occurred while loading the file.</p>
+      </div>
+    </div>
+  </div>
+
   <script src="../common/sidebar.js"></script>
   <script src="classroom.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </body>
 </html>
