@@ -18,8 +18,8 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_A
 // List of Gemini models to try in order (from most preferred to fallback)
 // Using v1 API with correct model names for free tier
 const GEMINI_MODELS = [
-  process.env.GEMINI_MODEL || "gemini-1.5-flash",  // Fast and free - best for daily use
-  "gemini-1.0-pro",  // Fallback free model
+  process.env.GEMINI_MODEL || "gemini-2.5-flash",  // Fast and free - best for daily use
+  "gemini-1.5-flash",  // Fallback free model
 ];
 
 let currentGeminiModelIndex = 0;

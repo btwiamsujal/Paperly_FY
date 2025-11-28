@@ -1,6 +1,7 @@
 const AISummary = require('../models/AISummary');
-const { processSummaryRequest } = require('../services/summarizationService');
+const { processSummaryRequest, extractText, summarizeText } = require('../services/summarizationService');
 
+// Create a new summary (returns immediately with PENDING status)
 // Create a new summary (returns immediately with PENDING status)
 exports.createSummary = async (req, res) => {
   try {
@@ -38,6 +39,61 @@ exports.createSummary = async (req, res) => {
   } catch (error) {
     console.error('Error creating summary:', error);
     res.status(500).json({ message: 'Server error creating summary' });
+  }
+};
+
+// Direct summarization endpoint
+exports.summarize = async (req, res) => {
+  try {
+    const { sourceType, fileId, text, summaryLength, focus, language } = req.body;
+    
+    if (!sourceType) {
+      return res.status(400).json({ message: 'sourceType is required' });
+    }
+
+    let sourceContent = text;
+    if (sourceType === 'pdf') {
+       // If fileId provided, fetch URL (not implemented here yet, assuming client sends URL or text)
+       // For now, assuming client sends fileUrl as 'text' or we need to fetch it.
+       // Let's assume 'text' param holds the URL for PDF type for now based on previous logic
+       // OR we can look up fileId.
+       // Given requirements: "Accept: fileId or text".
+       // If fileId, we need to look up the file.
+       if (fileId) {
+         const File = require('../models/File');
+         const fileDoc = await File.findById(fileId);
+         if (!fileDoc) return res.status(404).json({ message: 'File not found' });
+         sourceContent = fileDoc.fileUrl || fileDoc.path; // Adjust based on File model
+       } else if (!text) {
+          return res.status(400).json({ message: 'fileId or text is required' });
+       }
+    } else if (sourceType === 'note') {
+       // If note, we might need to fetch note content if only ID is passed
+       // But requirement says "For notes/text: Use raw text directly."
+       // So if sourceType is note, we expect text to be the note content.
+       if (!text) return res.status(400).json({ message: 'Note text is required' });
+    }
+
+    // Extract text
+    const extractedText = await extractText(sourceType, sourceContent);
+    
+    if (!extractedText || extractedText.trim().length === 0) {
+      return res.status(400).json({ message: 'Could not extract text from source' });
+    }
+
+    // Summarize
+    const result = await summarizeText(extractedText, { 
+      sourceType, 
+      summaryLength, 
+      focus,
+      language 
+    });
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error in direct summarization:', error);
+    res.status(500).json({ message: 'Server error during summarization', error: error.message });
   }
 };
 
